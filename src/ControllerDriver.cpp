@@ -66,7 +66,7 @@ DriverPose_t ControllerDriver::GetPose()
 {
 	AMFITRACK& AMFITRACK = AMFITRACK::getInstance();
 	DriverPose_t pose = { 0 }; //This Amfitrack doesn't use Pose, so this method is just returning a default Pose.
-	if (AMFITRACK.getDeviceActive(this->deviceID_))
+	if (!AMFITRACK.getDeviceActive(this->deviceID_))
 	{
 		std::stringstream ss;
 		ss << static_cast<int>(this->deviceID_);  // Convert to int for stream insertion
@@ -108,12 +108,6 @@ DriverPose_t ControllerDriver::GetPose()
 
 void ControllerDriver::RunFrame()
 {
-	////Since we used VRScalarUnits_NormalizedTwoSided as the unit, the range is -1 to 1.
-	//VRDriverInput()->UpdateScalarComponent(joystickYHandle, 0.95f, 0); //move forward
-	//VRDriverInput()->UpdateScalarComponent(trackpadYHandle, 0.95f, 0); //move foward
-	//VRDriverInput()->UpdateScalarComponent(joystickXHandle, 0.0f, 0); //change the value to move sideways
-	//VRDriverInput()->UpdateScalarComponent(trackpadXHandle, 0.0f, 0); //change the value to move sideways
-
 	VRServerDriverHost()->TrackedDevicePoseUpdated(this->device_index_, GetPose(), sizeof(vr::DriverPose_t));
 }
 

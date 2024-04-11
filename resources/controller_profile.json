@@ -9,18 +9,9 @@
   },
   "should_show_binding_errors": true,
   "input_source": {
-    "/input/joystick": {
-      "type": "joystick",
-      "click": false,
-      "touch": false,
+    "/pose/raw": {
+      "type": "pose",
       "binding_image_point": [ 0, 0 ]
-    },
-    "/input/trackpad": {
-      "type": "trackpad",
-      "binding_image_point": [ 0, 0 ],
-      "force": false,
-      "click": false,
-      "touch": false
     }
   }
 }
