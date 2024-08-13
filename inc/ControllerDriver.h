@@ -77,10 +77,14 @@ public:
 
 private:
 
-	VRInputComponentHandle_t joystickYHandle;
-	VRInputComponentHandle_t trackpadYHandle;
-	VRInputComponentHandle_t joystickXHandle;
-	VRInputComponentHandle_t trackpadXHandle;
+	vr::VRInputComponentHandle_t a_button_click_component_ = 0;
+	vr::VRInputComponentHandle_t a_button_touch_component_ = 0;
+
+	vr::VRInputComponentHandle_t b_button_click_component_ = 0;
+	vr::VRInputComponentHandle_t b_button_touch_component_ = 0;
+
+	vr::VRInputComponentHandle_t trigger_click_component_ = 0;
+	vr::VRInputComponentHandle_t trigger_touch_component_ = 0;
 
 	uint8_t deviceID_;
 	vr::TrackedDeviceIndex_t device_index_ = vr::k_unTrackedDeviceIndexInvalid;

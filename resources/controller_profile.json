@@ -1,16 +1,36 @@
 {
   "jsonid": "input_profile",
   "controller_type": "Amfitrack_controller",
-  "legacy_binding": "{Amfitrack}/input/legacy_bindings_Amfitrack.json",
   "device_class": "TrackedDeviceClass_Controller",
-  "input_bindingui_mode": "single_device",
-  "input_bindingui_right": {
-    "image": "{Amfitrack}/icons/game_controller.svg"
-  },
+  "input_bindingui_mode": "controller_handed",
   "should_show_binding_errors": true,
+  "input_bindingui_left": {
+    "image": "{Amfitrack}/icons/amfitrack_controller_left.svg"
+  },
+  "input_bindingui_right": {
+    "image": "{Amfitrack}/icons/amfitrack_controller_right.svg"
+  },
   "input_source": {
     "/pose/raw": {
       "type": "pose",
+      "binding_image_point": [ 0, 0 ]
+    },
+    "/input/a": {
+      "type": "button",
+      "click": true,
+      "touch": true,
+      "binding_image_point": [ 0, 0 ]
+    },
+    "/input/b": {
+      "type": "button",
+      "click": true,
+      "touch": true,
+      "binding_image_point": [ 0, 0 ]
+    },
+    "/input/trigger": {
+      "type": "trigger",
+      "click": true,
+      "touch": true,
       "binding_image_point": [ 0, 0 ]
     }
   }

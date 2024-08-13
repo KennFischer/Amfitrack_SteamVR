@@ -3,6 +3,8 @@
 
 #include <sstream>
 #include <string>
+#include <math.h>
+#include <Windows.h>
 
 ControllerDriver::ControllerDriver(uint8_t DeviceID, ControllerDriver::Handedness handedness) :
 	deviceID_(DeviceID),
@@ -16,8 +18,23 @@ EVRInitError ControllerDriver::Activate(uint32_t unObjectId)
 
 	PropertyContainerHandle_t props = VRProperties()->TrackedDeviceToPropertyContainer(this->device_index_); //this gets a container object where you store all the information about your driver
 
-	VRProperties()->SetStringProperty(props, Prop_InputProfilePath_String, "{Amfitrack}/input/controller_profile.json"); //tell OpenVR where to get your driver's Input Profile
-	VRProperties()->SetInt32Property(props, Prop_ControllerRoleHint_Int32, ETrackedControllerRole::TrackedControllerRole_LeftHand); //tells OpenVR what kind of device this is
+	VRDriverInput()->CreateBooleanComponent(props, "/input/a/click", &this->a_button_click_component_);
+	VRDriverInput()->CreateBooleanComponent(props, "/input/a/touch", &this->a_button_touch_component_);
+
+	VRDriverInput()->CreateBooleanComponent(props, "/input/b/click", &this->b_button_click_component_);
+	VRDriverInput()->CreateBooleanComponent(props, "/input/b/touch", &this->b_button_touch_component_);
+
+	VRDriverInput()->CreateBooleanComponent(props, "/input/trigger/click", &this->trigger_click_component_);
+	VRDriverInput()->CreateBooleanComponent(props, "/input/trigger/touch", &this->trigger_touch_component_);
+
+	VRProperties()->SetUint64Property(props, vr::Prop_CurrentUniverseId_Uint64, 2);
+
+	// Set up a model "number" (not needed but good to have)
+	VRProperties()->SetStringProperty(props, vr::Prop_ModelNumber_String, "amfitrack_controller");
+
+	VRProperties()->SetStringProperty(props, Prop_RenderModelName_String, "vr_controller_vive_1_5");
+
+	VRProperties()->SetBoolProperty(props, Prop_HasControllerComponent_Bool, true);
 
 	// Give SteamVR a hint at what hand this controller is for
 	if (this->handedness_ == Handedness::LEFT) {
@@ -30,6 +47,7 @@ EVRInitError ControllerDriver::Activate(uint32_t unObjectId)
 		VRProperties()->SetInt32Property(props, Prop_ControllerRoleHint_Int32, ETrackedControllerRole::TrackedControllerRole_OptOut); //tells OpenVR what kind of device this is
 	}
 
+	VRProperties()->SetStringProperty(props, Prop_InputProfilePath_String, "{Amfitrack}/input/controller_profile.json"); //tell OpenVR where to get your driver's Input Profile
 
 	std::stringstream ss;
 	ss << static_cast<int>(this->deviceID_);  // Convert to int for stream insertion
@@ -62,6 +80,26 @@ EVRInitError ControllerDriver::Activate(uint32_t unObjectId)
 	return VRInitError_None;
 }
 
+void normalizeQuaternion(HmdQuaternion_t& q)
+{
+	double norm = std::sqrt(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+	q.w /= norm;
+	q.x /= norm;
+	q.y /= norm;
+	q.z /= norm;
+}
+
+HmdQuaternion_t rotate(HmdQuaternion_t a, HmdQuaternion_t b)
+{
+	HmdQuaternion_t result;
+	result.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z; 
+	result.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y; 
+	result.y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x; 
+	result.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w; 
+
+	return result;
+}
+
 DriverPose_t ControllerDriver::GetPose()
 {
 	AMFITRACK& AMFITRACK = AMFITRACK::getInstance();
@@ -79,29 +117,53 @@ DriverPose_t ControllerDriver::GetPose()
 	lib_AmfiProt_Amfitrack_Pose_t position;
 	AMFITRACK.getDevicePose(this->deviceID_, &position);
 
-	std::stringstream x, y, z;
-	x << static_cast<int>(position.position_x_in_m);
-	y << static_cast<int>(position.position_y_in_m);
-	z << static_cast<int>(position.position_z_in_m);
-	std::string message = "X: " + x.str() + " | Y: " + y.str() + " | Z: " + z.str();
-	VRDriverLog()->Log(message.c_str());
 
-	pose.vecPosition[0] = position.position_x_in_m;
-	pose.vecPosition[1] = position.position_z_in_m;
-	pose.vecPosition[2] = position.position_y_in_m;
 
+	pose.deviceIsConnected = true;
 	pose.poseIsValid = true;
 	pose.result = TrackingResult_Running_OK;
-	pose.deviceIsConnected = true;
+	pose.willDriftInYaw = false;
+	pose.shouldApplyHeadModel = false;
+	pose.qDriverFromHeadRotation.w = pose.qWorldFromDriverRotation.w = pose.qRotation.w = 1.0;
+	
+	pose.vecPosition[0] = -position.position_x_in_m;
+	pose.vecPosition[1] = position.position_y_in_m;
+	pose.vecPosition[2] = -position.position_z_in_m;
 
-	HmdQuaternion_t quat;
-	quat.w = position.orientation_w;
-	quat.x = -position.orientation_x;
-	quat.y = -position.orientation_y;
-	quat.z = -position.orientation_z;
+	pose.qRotation.w = position.orientation_w;
+	pose.qRotation.x = -position.orientation_x;
+	pose.qRotation.y = position.orientation_y;
+	pose.qRotation.z = -position.orientation_z;
 
-	pose.qWorldFromDriverRotation = quat;
-	pose.qDriverFromHeadRotation = quat;
+	std::stringstream x, y, z;
+	x << static_cast<double>(pose.vecPosition[0]);
+	y << static_cast<double>(pose.vecPosition[1]);
+	z << static_cast<double>(pose.vecPosition[2]);
+	std::string message = "Pose X: " + x.str() + " | Y: " + y.str() + " | Z: " + z.str();
+	VRDriverLog()->Log(message.c_str());
+
+	HmdQuaternion_t rotationQuat = {0};
+	// Rotate 90 degrees around Y-axis
+	rotationQuat.y = 0.7071068;
+	rotationQuat.w = 0.7071068;
+	pose.qRotation = rotate(pose.qRotation, rotationQuat);
+
+	// Rotate 90 degrees around X-axis
+	rotationQuat.x = 0;
+	rotationQuat.y = 0;
+	rotationQuat.z = -0.7071068;
+	rotationQuat.w = 0.7071068;
+	pose.qRotation = rotate(pose.qRotation, rotationQuat);
+
+	normalizeQuaternion(pose.qRotation);
+
+
+
+	x << static_cast<double>(pose.qRotation.x);
+	y << static_cast<double>(pose.qRotation.y);
+	z << static_cast<double>(pose.qRotation.z);
+	message = "Quat X: " + x.str() + " | Y: " + y.str() + " | Z: " + z.str();
+	VRDriverLog()->Log(message.c_str());
 
 	return pose;
 }
@@ -109,6 +171,33 @@ DriverPose_t ControllerDriver::GetPose()
 void ControllerDriver::RunFrame()
 {
 	VRServerDriverHost()->TrackedDevicePoseUpdated(this->device_index_, GetPose(), sizeof(vr::DriverPose_t));
+
+	if (GetAsyncKeyState(0x41 /* E */) != 0) {
+		VRDriverInput()->UpdateBooleanComponent(this->a_button_click_component_, true, 0);
+		VRDriverInput()->UpdateBooleanComponent(this->a_button_touch_component_, true, 0);
+	}
+	else {
+		VRDriverInput()->UpdateBooleanComponent(this->a_button_click_component_, false, 0);
+		VRDriverInput()->UpdateBooleanComponent(this->a_button_touch_component_, false, 0);
+	}
+
+	if (GetAsyncKeyState(0x51 /* Q */) != 0) {
+		VRDriverInput()->UpdateBooleanComponent(this->b_button_click_component_, true, 0);
+		VRDriverInput()->UpdateBooleanComponent(this->b_button_touch_component_, true, 0);
+	}
+	else {
+		VRDriverInput()->UpdateBooleanComponent(this->b_button_click_component_, false, 0);
+		VRDriverInput()->UpdateBooleanComponent(this->b_button_touch_component_, false, 0);
+	}
+
+	if (GetAsyncKeyState(0x44 /* D */) != 0) {
+		VRDriverInput()->UpdateBooleanComponent(this->trigger_click_component_, true, 0);
+		VRDriverInput()->UpdateBooleanComponent(this->trigger_touch_component_, true, 0);
+	}
+	else {
+		VRDriverInput()->UpdateBooleanComponent(this->trigger_click_component_, false, 0);
+		VRDriverInput()->UpdateBooleanComponent(this->trigger_touch_component_, false, 0);
+	}
 }
 
 void ControllerDriver::Deactivate()
