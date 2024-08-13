@@ -1,0 +1,3 @@
+[submodule "lib/amfitrack_cpp_SDK"]
+	path = lib/amfitrack_cpp_SDK
+	url = https://github.com/amfitech/amfitrack_cpp_SDK.git
