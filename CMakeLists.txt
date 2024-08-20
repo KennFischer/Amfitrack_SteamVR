@@ -44,4 +44,12 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET driver_amfitrack PROPERTY CXX_STANDARD 20)
 endif()
 
+set(SOURCE_FILE "out/build/x64-debug/driver_amfitrack.dll")
+set(DESTINATION_DIR "C:/Users/Domin/Desktop")
+
+add_custom_command(TARGET driver_amfitrack POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/driver_amfitrack.dll" "C:/Program Files (x86)/Steam/steamapps/common/SteamVR/drivers/Amfitrack_SteamVR/bin/win64/driver_amfitrack.dll"
+)
+ 
+
 # TODO: Add tests and install targets if needed.

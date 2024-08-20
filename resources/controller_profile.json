@@ -2,13 +2,15 @@
   "jsonid": "input_profile",
   "controller_type": "Amfitrack_controller",
   "device_class": "TrackedDeviceClass_Controller",
+  "resource_root": "{Amfitrack}/resources",
+  "driver_name": "amfitrack",
   "input_bindingui_mode": "controller_handed",
   "should_show_binding_errors": true,
   "input_bindingui_left": {
-    "image": "{Amfitrack}/icons/amfitrack_controller_left.svg"
+    "image": "{Amfitrack}/resources/icons/amfitrack_controller_left.svg"
   },
   "input_bindingui_right": {
-    "image": "{Amfitrack}/icons/amfitrack_controller_right.svg"
+    "image": "{Amfitrack}/resources/icons/amfitrack_controller_right.svg"
   },
   "input_source": {
     "/pose/raw": {
