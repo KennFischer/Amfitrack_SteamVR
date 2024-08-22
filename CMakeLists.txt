@@ -12,8 +12,8 @@ endif()
 project ("driver_amfitrack")
 
 # Include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/driver_files/src)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/driver_files/src/Native)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/Native)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libraries)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libraries/linalg)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libraries/openvr/headers)
@@ -24,25 +24,25 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libraries/openvr)
 
 # Source files
 set(SOURCES
-    driver_files/src/Driver/ControllerDevice.cpp
-    driver_files/src/Driver/HMDDevice.cpp
-    driver_files/src/Driver/TrackerDevice.cpp
-    driver_files/src/Driver/TrackingReferenceDevice.cpp
-    driver_files/src/Driver/VRDriver.cpp
-    driver_files/src/Native/DriverFactory.cpp
+    src/Driver/ControllerDevice.cpp
+    src/Driver/HMDDevice.cpp
+    src/Driver/TrackerDevice.cpp
+    src/Driver/TrackingReferenceDevice.cpp
+    src/Driver/VRDriver.cpp
+    src/Native/DriverFactory.cpp
 )
 
 # Header files
 set(HEADERS
-    driver_files/src/Driver/ControllerDevice.hpp
-    driver_files/src/Driver/DeviceType.hpp
-    driver_files/src/Driver/HMDDevice.hpp
-    driver_files/src/Driver/IVRDevice.hpp
-    driver_files/src/Driver/IVRDriver.hpp
-    driver_files/src/Driver/TrackerDevice.hpp
-    driver_files/src/Driver/TrackingReferenceDevice.hpp
-    driver_files/src/Driver/VRDriver.hpp
-    driver_files/src/Native/DriverFactory.hpp
+    src/Driver/ControllerDevice.hpp
+    src/Driver/DeviceType.hpp
+    src/Driver/HMDDevice.hpp
+    src/Driver/IVRDevice.hpp
+    src/Driver/IVRDriver.hpp
+    src/Driver/TrackerDevice.hpp
+    src/Driver/TrackingReferenceDevice.hpp
+    src/Driver/VRDriver.hpp
+    src/Native/DriverFactory.hpp
 
     libraries/openvr/headers/openvr.h
     libraries/openvr/headers/openvr_capi.h
