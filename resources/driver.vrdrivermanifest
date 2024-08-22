@@ -1,8 +1,0 @@
-{
-	"alwaysActivate": true,
-	"name" : "Amfitrack",
-	"directory" : "",
-	"resourceOnly" : false,
-	"prefersUpperDeviceIndices" :  true,
-	"hmd_presence" : []
-}
