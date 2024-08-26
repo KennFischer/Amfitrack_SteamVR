@@ -1,7 +1,9 @@
 #include "ControllerDevice.hpp"
 #include <Windows.h>
+#include "amfitrack_cpp_SDK/Amfitrack.hpp"
 
-AmfitrackDriver::ControllerDevice::ControllerDevice(std::string serial, ControllerDevice::Handedness handedness):
+AmfitrackDriver::ControllerDevice::ControllerDevice(uint8_t deviceId, std::string serial, ControllerDevice::Handedness handedness):
+    deviceID_(deviceId),
     serial_(serial),
     handedness_(handedness)
 {
@@ -10,6 +12,17 @@ AmfitrackDriver::ControllerDevice::ControllerDevice(std::string serial, Controll
 std::string AmfitrackDriver::ControllerDevice::GetSerial()
 {
     return this->serial_;
+}
+
+vr::HmdQuaternion_t rotate(vr::HmdQuaternion_t a, vr::HmdQuaternion_t b)
+{
+	vr::HmdQuaternion_t result;
+	result.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
+	result.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
+	result.y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
+	result.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
+
+	return result;
 }
 
 void AmfitrackDriver::ControllerDevice::Update()
@@ -44,36 +57,48 @@ void AmfitrackDriver::ControllerDevice::Update()
 
     // Find a HMD
     auto devices = GetDriver()->GetDevices();
-    auto hmd = std::find_if(devices.begin(), devices.end(), [](const std::shared_ptr<IVRDevice>& device_ptr) {return device_ptr->GetDeviceType() == DeviceType::HMD; });
-    if (hmd != devices.end()) {
-        // Found a HMD
-        vr::DriverPose_t hmd_pose = (*hmd)->GetPose();
+    AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
+	if (!AMFITRACK.getDeviceActive(this->deviceID_))
+	{
+		std::stringstream ss;
+		ss << static_cast<int>(this->deviceID_); // Convert to int for stream insertion
+		std::string message = "No Pose for this device: " + ss.str();
+        GetDriver()->Log(message.c_str());
+		pose.poseIsValid = false;
+		return;
+	}
 
-        // Here we setup some transforms so our controllers are offset from the headset by a small amount so we can see them
-        linalg::vec<float, 3> hmd_position{ (float)hmd_pose.vecPosition[0], (float)hmd_pose.vecPosition[1], (float)hmd_pose.vecPosition[2] };
-        linalg::vec<float, 4> hmd_rotation{ (float)hmd_pose.qRotation.x, (float)hmd_pose.qRotation.y, (float)hmd_pose.qRotation.z, (float)hmd_pose.qRotation.w };
+	lib_AmfiProt_Amfitrack_Pose_t position;
+	AMFITRACK.getDevicePose(this->deviceID_, &position);
 
-        // Do shaking animation if haptic vibration was requested
-        float controller_y = -0.2f + 0.01f * std::sinf(8 * 3.1415f * vibrate_anim_state_);
+	pose.vecPosition[0] = -position.position_x_in_m;
+	pose.vecPosition[1] = position.position_y_in_m;
+	pose.vecPosition[2] = -position.position_z_in_m;
 
-        // Left hand controller on the left, right hand controller on the right, any other handedness sticks to the middle
-        float controller_x = this->handedness_ == Handedness::LEFT ? -0.2f : (this->handedness_ == Handedness::RIGHT ? 0.2f : 0.f);
+	pose.qRotation.w = position.orientation_w;
+	pose.qRotation.x = -position.orientation_x;
+	pose.qRotation.y = position.orientation_y;
+	pose.qRotation.z = -position.orientation_z;
 
-        linalg::vec<float, 3> hmd_pose_offset = { controller_x, controller_y, -0.5f };
+	std::stringstream x, y, z;
+	x << static_cast<double>(pose.vecPosition[0]);
+	y << static_cast<double>(pose.vecPosition[1]);
+	z << static_cast<double>(pose.vecPosition[2]);
+	std::string message = "Pose X: " + x.str() + " | Y: " + y.str() + " | Z: " + z.str();
+	GetDriver()->Log(message.c_str());
 
-        hmd_pose_offset = linalg::qrot(hmd_rotation, hmd_pose_offset);
+	vr::HmdQuaternion_t rotationQuat = {0};
+	// Rotate 90 degrees around Y-axis
+	rotationQuat.y = 0.7071068;
+	rotationQuat.w = 0.7071068;
+	pose.qRotation = rotate(pose.qRotation, rotationQuat);
 
-        linalg::vec<float, 3> final_pose = hmd_pose_offset + hmd_position;
-
-        pose.vecPosition[0] = final_pose.x;
-        pose.vecPosition[1] = final_pose.y;
-        pose.vecPosition[2] = final_pose.z;
-
-        pose.qRotation.w = hmd_rotation.w;
-        pose.qRotation.x = hmd_rotation.x;
-        pose.qRotation.y = hmd_rotation.y;
-        pose.qRotation.z = hmd_rotation.z;
-    }
+	// Rotate 90 degrees around X-axis
+	rotationQuat.x = 0;
+	rotationQuat.y = 0;
+	rotationQuat.z = -0.7071068;
+	rotationQuat.w = 0.7071068;
+	pose.qRotation = rotate(pose.qRotation, rotationQuat);
 
     // Check if we need to press any buttons (I am only hooking up the A button here but the process is the same for the others)
     // You will still need to go into the games button bindings and hook up each one (ie. a to left click, b to right click, etc.) for them to work properly
@@ -152,7 +177,7 @@ vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId
     GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_ModelNumber_String, "amfitrack_controller");
 
     // Set up a render model path
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, "{amfitrack}amfitrack_controller");
+    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, "vr_controller_vive_1_5");
 
     // Give SteamVR a hint at what hand this controller is for
     if (this->handedness_ == Handedness::LEFT) {

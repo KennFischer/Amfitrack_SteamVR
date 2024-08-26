@@ -7,6 +7,7 @@
 
 #include <Driver/IVRDevice.hpp>
 #include <Native/DriverFactory.hpp>
+#include <openvr_driver.h>
 
 namespace AmfitrackDriver {
     class ControllerDevice : public IVRDevice {
@@ -18,7 +19,7 @@ namespace AmfitrackDriver {
                 ANY
             };
 
-            ControllerDevice(std::string serial, Handedness handedness = Handedness::ANY);
+            ControllerDevice(uint8_t deviceId, std::string serial, Handedness handedness = Handedness::ANY);
             ~ControllerDevice() = default;
 
             // Inherited via IVRDevice
@@ -38,6 +39,7 @@ namespace AmfitrackDriver {
     private:
         vr::TrackedDeviceIndex_t device_index_ = vr::k_unTrackedDeviceIndexInvalid;
         std::string serial_;
+        uint8_t deviceID_;
         Handedness handedness_;
 
         vr::DriverPose_t last_pose_;
