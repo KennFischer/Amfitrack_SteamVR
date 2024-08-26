@@ -27,7 +27,6 @@ set(SOURCES
     src/Driver/ControllerDevice.cpp
     src/Driver/HMDDevice.cpp
     src/Driver/TrackerDevice.cpp
-    src/Driver/TrackingReferenceDevice.cpp
     src/Driver/VRDriver.cpp
     src/Native/DriverFactory.cpp
 )
@@ -40,7 +39,6 @@ set(HEADERS
     src/Driver/IVRDevice.hpp
     src/Driver/IVRDriver.hpp
     src/Driver/TrackerDevice.hpp
-    src/Driver/TrackingReferenceDevice.hpp
     src/Driver/VRDriver.hpp
     src/Native/DriverFactory.hpp
 

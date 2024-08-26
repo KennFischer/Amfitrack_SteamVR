@@ -2,7 +2,7 @@
 #include <Driver/HMDDevice.hpp>
 #include <Driver/TrackerDevice.hpp>
 #include <Driver/ControllerDevice.hpp>
-#include <Driver/TrackingReferenceDevice.hpp>
+#include "amfitrack_cpp_SDK/Amfitrack.hpp"
 
 vr::EVRInitError AmfitrackDriver::VRDriver::Init(vr::IVRDriverContext* pDriverContext)
 {
@@ -13,19 +13,26 @@ vr::EVRInitError AmfitrackDriver::VRDriver::Init(vr::IVRDriverContext* pDriverCo
 
     Log("Activating AmfitrackDriver...");
 
+    // Create instance of Amfitrack
+    AMFITRACK& AMFITRACK = AMFITRACK::getInstance();
+    // Initialize the USB and connect to the devices
+    AMFITRACK.initialize_amfitrack();
+    // Start the main thread that reads the data
+    AMFITRACK.start_amfitrack_task();
+
+    Log("Amfitrack started"); // Log Amfitrack started message
+
     // Add a HMD
-    this->AddDevice(std::make_shared<HMDDevice>("Example_HMDDevice"));
+    // this->AddDevice(std::make_shared<HMDDevice>("Example_HMDDevice"));
 
     // Add a couple controllers
     this->AddDevice(std::make_shared<ControllerDevice>("Example_ControllerDevice_Left", ControllerDevice::Handedness::LEFT));
     this->AddDevice(std::make_shared<ControllerDevice>("Example_ControllerDevice_Right", ControllerDevice::Handedness::RIGHT));
 
     // Add a tracker
-    this->AddDevice(std::make_shared<TrackerDevice>("Example_TrackerDevice"));
+    // this->AddDevice(std::make_shared<TrackerDevice>("Example_TrackerDevice"));
 
-    // Add a couple tracking references
-    this->AddDevice(std::make_shared<TrackingReferenceDevice>("Example_TrackingReference_A"));
-    this->AddDevice(std::make_shared<TrackingReferenceDevice>("Example_TrackingReference_B"));
+
 
     Log("AmfitrackDriver Loaded Successfully");
 
