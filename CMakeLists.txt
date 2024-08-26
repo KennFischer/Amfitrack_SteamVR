@@ -54,7 +54,7 @@ set(HEADERS
 )
 
 # Add source to this project's executable.
-add_library (driver_amfitrack SHARED ${SOURCES} ${HEADERS})
+add_library(driver_amfitrack SHARED ${SOURCES} ${HEADERS})
 
 target_link_libraries(driver_amfitrack Amfitrack_API)
 
@@ -62,11 +62,13 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET driver_amfitrack PROPERTY CXX_STANDARD 20)
 endif()
 
-set(SOURCE_FILE "out/build/x64-debug/driver_amfitrack.dll")
-set(DESTINATION_DIR "C:/Users/Domin/Desktop")
+set(SOURCE_FILE "${CMAKE_CURRENT_BINARY_DIR}/driver_amfitrack.dll")
+set(DESTINATION_DIR "C:/Program Files (x86)/Steam/steamapps/common/SteamVR/drivers/Amfitrack_SteamVR/bin/win64")
 
 add_custom_command(TARGET driver_amfitrack POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/driver_amfitrack.dll" "C:/Program Files (x86)/Steam/steamapps/common/SteamVR/drivers/Amfitrack_SteamVR/bin/win64/driver_amfitrack.dll"
+    COMMAND ${CMAKE_COMMAND} -E copy "${SOURCE_FILE}" "${DESTINATION_DIR}/driver_amfitrack.dll"
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/copy_if_different_directory.cmake"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/driver/amfitrack/driver.vrdrivermanifest" "C:/Program Files (x86)/Steam/steamapps/common/SteamVR/drivers/Amfitrack_SteamVR/"
 )
  
 
