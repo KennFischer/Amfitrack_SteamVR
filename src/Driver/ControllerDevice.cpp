@@ -2,6 +2,8 @@
 #include <Windows.h>
 #include "amfitrack_cpp_SDK/Amfitrack.hpp"
 
+#define CHECK_BIT(var, pos) ((var) & (1 << (pos)))
+
 AmfitrackDriver::ControllerDevice::ControllerDevice(uint8_t deviceId, std::string serial, ControllerDevice::Handedness handedness):
     deviceID_(deviceId),
     serial_(serial),
@@ -99,6 +101,31 @@ void AmfitrackDriver::ControllerDevice::Update()
 	rotationQuat.z = -0.7071068;
 	rotationQuat.w = 0.7071068;
 	pose.qRotation = rotate(pose.qRotation, rotationQuat);
+
+    	lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
+	AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
+	uint16_t gpio_state = sensorMeasurement.gpio_state;
+
+	bool ButtonPressed = CHECK_BIT(gpio_state, 3);
+
+	if (this->handedness_ == Handedness::RIGHT)
+	{
+		if (ButtonPressed)
+		{
+			GetDriver()->Log("Right sensor button pressed");
+		}
+		GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
+		GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
+	}
+	else if (this->handedness_ == Handedness::LEFT)
+	{
+		if (ButtonPressed)
+		{
+			GetDriver()->Log("Left sensor button pressed");
+		}
+		GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_click_component_, ButtonPressed, 0);
+		GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed, 0);
+	}
 
     // Check if we need to press any buttons (I am only hooking up the A button here but the process is the same for the others)
     // You will still need to go into the games button bindings and hook up each one (ie. a to left click, b to right click, etc.) for them to work properly
