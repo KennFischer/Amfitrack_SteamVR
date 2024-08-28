@@ -129,14 +129,14 @@ void AmfitrackDriver::ControllerDevice::Update()
 
     // Check if we need to press any buttons (I am only hooking up the A button here but the process is the same for the others)
     // You will still need to go into the games button bindings and hook up each one (ie. a to left click, b to right click, etc.) for them to work properly
-    if (GetAsyncKeyState(0x45 /* E */) != 0) {
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, true, 0);
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, true, 0);
-    }
-    else {
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, false, 0);
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, false, 0);
-    }
+    // if (GetAsyncKeyState(0x45 /* E */) != 0) {
+    //     GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, true, 0);
+    //     GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, true, 0);
+    // }
+    // else {
+    //     GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, false, 0);
+    //     GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, false, 0);
+    // }
 
     // Post pose
     GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));

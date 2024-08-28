@@ -39,45 +39,6 @@
       "touch" : true,
       "value" : true,
       "binding_image_point" : [ 0, 0 ]
-    },
-    "/input/grip" : {
-      "type" : "trigger",
-      "force" : true,
-      "value" : true,
-      "touch" : true,
-      "input_activity_path" : "/input/grip/force",
-      "input_activity_threshold" : 0.1,
-      "binding_image_point" : [ 0, 0 ]
-    },
-    "/input/system": {
-      "type": "button",
-      "click": true,
-      "touch" : true,
-      "binding_image_point": [0,0]
-    },
-    "/input/trackpad": {
-      "type": "trackpad",
-      "click": true,
-      "touch" : true,
-      "binding_image_point": [0,0]
-    },
-    "/input/joystick": {
-      "type": "joystick",
-      "click": true,
-      "touch": true,
-      "binding_image_point": [0,0]
-    },
-    "/input/skeleton/left" : {
-      "type" : "skeleton",
-      "skeleton": "/skeleton/hand/left",
-      "side" : "left",
-      "binding_image_point" : [ 0, 0 ]
-    },
-    "/input/skeleton/right" : {
-      "type" : "skeleton",
-      "skeleton": "/skeleton/hand/right",
-      "side" : "right",
-      "binding_image_point" : [ 0, 0 ]
     }
   }
 }
