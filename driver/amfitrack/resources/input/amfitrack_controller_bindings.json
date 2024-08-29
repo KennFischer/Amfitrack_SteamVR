@@ -1,44 +1,25 @@
 {
-  "jsonid": "input_profile",
-  "controller_type": "amfitrack_controller",
-  "device_class": "TrackedDeviceClass_Controller",
-  "resource_root": "amfitrack",
-  "driver_name": "amfitrack",
-  "input_bindingui_mode": "controller_handed",
-  "should_show_binding_errors": true,
-  "input_bindingui_left": {
-    "image": "{amfitrack}/icons/amfitrack_controller_left.svg"
-  },
-  "input_bindingui_right": {
-    "image": "{amfitrack}/icons/amfitrack_controller_right.svg"
-  },
-  "input_source": {
-    "/pose/raw" : {
-      "type" : "pose",
-      "binding_image_point" : [ 0,0 ]
+    "controller_type": "amfitrack_controller",
+    "bindings": {
+        "/actions/default": {
+            "sources": {
+                "/input/trigger": {
+                    "output": "/actions/default/in/trigger"
+                },
+                "/input/a": {
+                    "output": "/actions/default/in/grip"
+                },
+                "/input/b": {
+                    "output": "/actions/default/in/grip"
+                },
+                "/pose/raw": {
+                    "output": "/actions/default/in/pose"
+                },
+                "/output/haptic": {
+                    "output": "/actions/default/out/haptic"
+                }
+            }
+        }
     },
-    "/output/haptic": {
-      "type": "vibration",
-      "binding_image_point": [0,0]
-    },
-    "/input/a": {
-      "type": "button",
-      "click": true,
-      "touch" : true,
-      "binding_image_point": [0,0]
-    },
-    "/input/b": {
-      "type": "button",
-      "click": true,
-      "touch" : true,
-      "binding_image_point": [0,0]
-    },
-    "/input/trigger" : {
-      "type" : "trigger",
-      "click" : true,
-      "touch" : true,
-      "value" : true,
-      "binding_image_point" : [ 0, 0 ]
-    }
-  }
+    "legacy_binding": "amfitrack_legacy_bindings.json"
 }

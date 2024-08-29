@@ -87,7 +87,7 @@ void AmfitrackDriver::ControllerDevice::Update()
 	y << static_cast<double>(pose.vecPosition[1]);
 	z << static_cast<double>(pose.vecPosition[2]);
 	std::string message = "Pose X: " + x.str() + " | Y: " + y.str() + " | Z: " + z.str();
-	GetDriver()->Log(message.c_str());
+    GetDriver()->Log(std::to_string(this->deviceID_) + message);
 
 	vr::HmdQuaternion_t rotationQuat = {0};
 	// Rotate 90 degrees around Y-axis
@@ -204,7 +204,7 @@ vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId
     GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_ModelNumber_String, "amfitrack_controller");
 
     // Set up a render model path
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, "vr_controller_vive_1_5");
+    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, "amfitrack_controller");
 
     // Give SteamVR a hint at what hand this controller is for
     if (this->handedness_ == Handedness::LEFT) {
@@ -218,7 +218,7 @@ vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId
     }
 
     // Set controller profile
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_InputProfilePath_String, "{amfitrack}/input/amfitrack_controller_bindings.json");
+    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_InputProfilePath_String, "{amfitrack}/input/amfitrack_controller_profile.json");
 
     // Change the icon depending on which handedness this controller is using (ANY uses right)
     std::string controller_handedness_str = this->handedness_ == Handedness::LEFT ? "left" : "right";
