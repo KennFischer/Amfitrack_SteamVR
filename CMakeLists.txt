@@ -40,6 +40,7 @@ set(HEADERS
     src/Driver/IVRDriver.hpp
     src/Driver/TrackerDevice.hpp
     src/Driver/VRDriver.hpp
+    src/Driver/vrmath.h
     src/Native/DriverFactory.hpp
 
     libraries/openvr/headers/openvr.h

@@ -1,13 +1,13 @@
 #include "ControllerDevice.hpp"
 #include <Windows.h>
 #include "amfitrack_cpp_SDK/Amfitrack.hpp"
+#include "vrmath.h"
 
 #define CHECK_BIT(var, pos) ((var) & (1 << (pos)))
 
-AmfitrackDriver::ControllerDevice::ControllerDevice(uint8_t deviceId, std::string serial, ControllerDevice::Handedness handedness):
-    deviceID_(deviceId),
-    serial_(serial),
-    handedness_(handedness)
+AmfitrackDriver::ControllerDevice::ControllerDevice(uint8_t deviceId, std::string serial, ControllerDevice::Handedness handedness) : deviceID_(deviceId),
+                                                                                                                                     serial_(serial),
+                                                                                                                                     handedness_(handedness)
 {
 }
 
@@ -18,13 +18,13 @@ std::string AmfitrackDriver::ControllerDevice::GetSerial()
 
 vr::HmdQuaternion_t rotate(vr::HmdQuaternion_t a, vr::HmdQuaternion_t b)
 {
-	vr::HmdQuaternion_t result;
-	result.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
-	result.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
-	result.y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
-	result.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
+    vr::HmdQuaternion_t result;
+    result.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
+    result.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
+    result.y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
+    result.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
 
-	return result;
+    return result;
 }
 
 vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId)
@@ -38,7 +38,7 @@ vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId
 
     // Set some universe ID (Must be 2 or higher)
     GetDriver()->GetProperties()->SetUint64Property(this->props_, vr::Prop_CurrentUniverseId_Uint64, 2);
-    
+
     // Set up a model "number" (not needed but good to have)
     GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_ModelNumber_String, "amfitrack_controller");
 
@@ -66,24 +66,26 @@ vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId
     // GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/system/touch", &this->system_touch_component_);
 
     // GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/trackpad/click", &this->trackpad_click_component_);
-    // GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/trackpad/touch", &this->trackpad_touch_component_); 
+    // GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/trackpad/touch", &this->trackpad_touch_component_);
     // GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/trackpad/x", &this->trackpad_x_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedTwoSided);
     // GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/trackpad/y", &this->trackpad_y_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedTwoSided);
-    
+
     // GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/joystick/click", &this->joystick_click_component_);
     // GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/joystick/touch", &this->joystick_touch_component_);
     // GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/joystick/x", &this->joystick_x_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedTwoSided);
     // GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/joystick/y", &this->joystick_y_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedTwoSided);
 
-
     // Give SteamVR a hint at what hand this controller is for
-    if (this->handedness_ == Handedness::LEFT) {
+    if (this->handedness_ == Handedness::LEFT)
+    {
         GetDriver()->GetProperties()->SetInt32Property(this->props_, vr::Prop_ControllerRoleHint_Int32, vr::ETrackedControllerRole::TrackedControllerRole_LeftHand);
     }
-    else if (this->handedness_ == Handedness::RIGHT) {
+    else if (this->handedness_ == Handedness::RIGHT)
+    {
         GetDriver()->GetProperties()->SetInt32Property(this->props_, vr::Prop_ControllerRoleHint_Int32, vr::ETrackedControllerRole::TrackedControllerRole_RightHand);
     }
-    else {
+    else
+    {
         GetDriver()->GetProperties()->SetInt32Property(this->props_, vr::Prop_ControllerRoleHint_Int32, vr::ETrackedControllerRole::TrackedControllerRole_OptOut);
     }
 
@@ -106,7 +108,6 @@ vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId
     return vr::VRInitError_None;
 }
 
-
 void AmfitrackDriver::ControllerDevice::Update()
 {
     if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
@@ -114,11 +115,14 @@ void AmfitrackDriver::ControllerDevice::Update()
 
     // Check if this device was asked to be identified
     auto events = GetDriver()->GetOpenVREvents();
-    for (auto event : events) {
+    for (auto event : events)
+    {
         // Note here, event.trackedDeviceIndex does not necissarily equal this->device_index_, not sure why, but the component handle will match so we can just use that instead
-        //if (event.trackedDeviceIndex == this->device_index_) {
-        if (event.eventType == vr::EVREventType::VREvent_Input_HapticVibration) {
-            if (event.data.hapticVibration.componentHandle == this->haptic_component_) {
+        // if (event.trackedDeviceIndex == this->device_index_) {
+        if (event.eventType == vr::EVREventType::VREvent_Input_HapticVibration)
+        {
+            if (event.data.hapticVibration.componentHandle == this->haptic_component_)
+            {
                 this->did_vibrate_ = true;
             }
         }
@@ -126,99 +130,127 @@ void AmfitrackDriver::ControllerDevice::Update()
     }
 
     // Check if we need to keep vibrating
-    if (this->did_vibrate_) {
-        this->vibrate_anim_state_ += (GetDriver()->GetLastFrameTime().count()/1000.f);
-        if (this->vibrate_anim_state_ > 1.0f) {
+    if (this->did_vibrate_)
+    {
+        this->vibrate_anim_state_ += (GetDriver()->GetLastFrameTime().count() / 1000.f);
+        if (this->vibrate_anim_state_ > 1.0f)
+        {
             this->did_vibrate_ = false;
             this->vibrate_anim_state_ = 0.0f;
         }
     }
+    vr::TrackedDevicePose_t hmd_pose{};
+
+    // GetRawTrackedDevicePoses expects an array.
+    // We only want the hmd pose, which is at index 0 of the array so we can just pass the struct in directly, instead of in an array
+    vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1);
+
+    // Get the position of the hmd from the 3x4 matrix GetRawTrackedDevicePoses returns
+    vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(hmd_pose.mDeviceToAbsoluteTracking);
+    // Get the orientation of the hmd from the 3x4 matrix GetRawTrackedDevicePoses returns
+    vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
+
+    std::stringstream hmd_x, hmd_y, hmd_z;
+    hmd_x << static_cast<double>(hmd_position.v[0]);
+    hmd_y << static_cast<double>(hmd_position.v[1]);
+    hmd_z << static_cast<double>(hmd_position.v[2]);
+    std::string hmd_message = "HMD Pose hmd_X: " + hmd_x.str() + " | hmd_Y: " + hmd_y.str() + " | hmd_Z: " + hmd_z.str();
+    GetDriver()->Log(hmd_message);
 
     // Setup pose for this frame
     auto pose = IVRDevice::MakeDefaultPose();
 
-    
     // Find a HMD
     auto devices = GetDriver()->GetDevices();
     AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
-	if (!AMFITRACK.getDeviceActive(this->deviceID_))
-	{
-		std::stringstream ss;
-		ss << static_cast<int>(this->deviceID_); // Convert to int for stream insertion
-		std::string message = "No Pose for this device: " + ss.str();
+    if (!AMFITRACK.getDeviceActive(this->deviceID_))
+    {
+        std::stringstream ss;
+        ss << static_cast<int>(this->deviceID_); // Convert to int for stream insertion
+        std::string message = "No Pose for this device: " + ss.str();
         GetDriver()->Log(message.c_str());
-		pose.poseIsValid = false;
+        pose.poseIsValid = false;
         // this->Deactivate();
-		return;
-	}
+        return;
+    }
 
-	lib_AmfiProt_Amfitrack_Pose_t position;
-	AMFITRACK.getDevicePose(this->deviceID_, &position);
+    lib_AmfiProt_Amfitrack_Pose_t position;
+    AMFITRACK.getDevicePose(this->deviceID_, &position);
 
-	pose.vecPosition[0] = -position.position_x_in_m;
-	pose.vecPosition[1] = position.position_y_in_m;
-	pose.vecPosition[2] = -position.position_z_in_m;
+    vr::HmdVector3_t offset_position =
+    {
+        position.position_x_in_m,
+        -position.position_y_in_m,
+        -position.position_z_in_m,
+    };
 
-    // // Apply positional offset
-    // // Define your offset values (can be set dynamically)
-    // const float offset_x = 0.0f; // Example: Adjust this value as needed
-    // const float offset_y = 1.00f;
-    // const float offset_z = 0.20f;
+    // Rotate our offset by the hmd quaternion (so the controllers are always facing towards us), and add then add the position of the hmd to put it into position.
+    const vr::HmdVector3_t positionhmd_sensor = hmd_position + (offset_position * hmd_orientation);
 
-    // // Apply offset to controller position
-    // pose.vecPosition[0] += offset_x;
-    // pose.vecPosition[1] += offset_y;
-    // pose.vecPosition[2] += offset_z;
+    // copy our position to our pose
+    pose.vecPosition[0] = positionhmd_sensor.v[0];
+    pose.vecPosition[1] = positionhmd_sensor.v[1];
+    pose.vecPosition[2] = positionhmd_sensor.v[2];
 
-	pose.qRotation.w = position.orientation_w;
-	pose.qRotation.x = -position.orientation_x;
-	pose.qRotation.y = position.orientation_y;
-	pose.qRotation.z = -position.orientation_z;
+    // pitch the controller 90 degrees so the face of the controller is facing towards us
+    pose.qRotation.w = position.orientation_w;
+    pose.qRotation.x = position.orientation_x;
+    pose.qRotation.y = -position.orientation_y;
+    pose.qRotation.z = -position.orientation_z;
 
-	std::stringstream x, y, z;
-	x << static_cast<double>(pose.vecPosition[0]);
-	y << static_cast<double>(pose.vecPosition[1]);
-	z << static_cast<double>(pose.vecPosition[2]);
-	std::string message = "Pose X: " + x.str() + " | Y: " + y.str() + " | Z: " + z.str();
+    std::stringstream x, y, z;
+    x << static_cast<double>(pose.vecPosition[0]);
+    y << static_cast<double>(pose.vecPosition[1]);
+    z << static_cast<double>(pose.vecPosition[2]);
+    std::string message = "Pose X: " + x.str() + " | Y: " + y.str() + " | Z: " + z.str();
     GetDriver()->Log(std::to_string(this->deviceID_) + message);
 
-	vr::HmdQuaternion_t rotationQuat = {0};
-	// Rotate 90 degrees around Y-axis
-	rotationQuat.y = 0.7071068;
-	rotationQuat.w = 0.7071068;
-	pose.qRotation = rotate(pose.qRotation, rotationQuat);
+    vr::HmdQuaternion_t rotationQuat = {0};
+    // Rotate 90 degrees around Y-axis
+    rotationQuat.y = 0.7071068;
+    rotationQuat.w = 0.7071068;
+    pose.qRotation = rotate(pose.qRotation, rotationQuat);
 
-	// Rotate 90 degrees around X-axis
-	rotationQuat.x = 0;
-	rotationQuat.y = 0;
-	rotationQuat.z = -0.7071068;
-	rotationQuat.w = 0.7071068;
-	pose.qRotation = rotate(pose.qRotation, rotationQuat);
+    // Rotate 90 degrees around X-axis
+    rotationQuat.x = 0;
+    rotationQuat.y = 0;
+    rotationQuat.z = -0.7071068;
+    rotationQuat.w = 0.7071068;
+    pose.qRotation = rotate(pose.qRotation, rotationQuat);
+
+    // Rotate 180 degrees around the Z-axis
+    rotationQuat.x = 0;
+    rotationQuat.y = 1;
+    rotationQuat.z = 0;
+    rotationQuat.w = 0;
+    pose.qRotation = rotate(pose.qRotation, rotationQuat);
+
+    pose.qRotation = hmd_orientation * pose.qRotation;
 
     lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
-	AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
-	uint16_t gpio_state = sensorMeasurement.gpio_state;
+    AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
+    uint16_t gpio_state = sensorMeasurement.gpio_state;
 
-	bool ButtonPressed = CHECK_BIT(gpio_state, 3);
+    bool ButtonPressed = CHECK_BIT(gpio_state, 3);
 
-	if (this->handedness_ == Handedness::RIGHT)
-	{
-		if (ButtonPressed)
-		{
-			GetDriver()->Log("Right sensor button pressed");
-		}
-		GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
-		GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
-	}
-	else if (this->handedness_ == Handedness::LEFT)
-	{
-		if (ButtonPressed)
-		{
-			GetDriver()->Log("Left sensor button pressed");
-		}
-		GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_click_component_, ButtonPressed, 0);
-		GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed, 0);
-	}
+    if (this->handedness_ == Handedness::RIGHT)
+    {
+        if (ButtonPressed)
+        {
+            GetDriver()->Log("Right sensor button pressed");
+        }
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
+    }
+    else if (this->handedness_ == Handedness::LEFT)
+    {
+        if (ButtonPressed)
+        {
+            GetDriver()->Log("Left sensor button pressed");
+        }
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_click_component_, ButtonPressed, 0);
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed, 0);
+    }
 
     // Check if we need to press any buttons (I am only hooking up the A button here but the process is the same for the others)
     // You will still need to go into the games button bindings and hook up each one (ie. a to left click, b to right click, etc.) for them to work properly
@@ -260,12 +292,12 @@ void AmfitrackDriver::ControllerDevice::EnterStandby()
 {
 }
 
-void* AmfitrackDriver::ControllerDevice::GetComponent(const char* pchComponentNameAndVersion)
+void *AmfitrackDriver::ControllerDevice::GetComponent(const char *pchComponentNameAndVersion)
 {
     return nullptr;
 }
 
-void AmfitrackDriver::ControllerDevice::DebugRequest(const char* pchRequest, char* pchResponseBuffer, uint32_t unResponseBufferSize)
+void AmfitrackDriver::ControllerDevice::DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize)
 {
     if (unResponseBufferSize >= 1)
         pchResponseBuffer[0] = 0;
