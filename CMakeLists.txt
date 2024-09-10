@@ -63,6 +63,12 @@ endif()
 set(SOURCE_FILE "${CMAKE_CURRENT_BINARY_DIR}/driver_amfitrack.dll")
 set(DESTINATION_DIR "C:/Program Files (x86)/Steam/steamapps/common/SteamVR/drivers/Amfitrack_SteamVR/bin/win64")
 
+# Custom command to delete the Amfitrack_SteamVR folder before building
+add_custom_command(
+    TARGET driver_amfitrack PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E remove_directory "C:/Program Files (x86)/Steam/steamapps/common/SteamVR/drivers/Amfitrack_SteamVR"
+)
+
 add_custom_command(TARGET driver_amfitrack POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "${SOURCE_FILE}" "${DESTINATION_DIR}/driver_amfitrack.dll"
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/copy_if_different_directory.cmake"

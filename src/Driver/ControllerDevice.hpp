@@ -79,5 +79,6 @@ namespace AmfitrackDriver {
 
         //vr::VRInputComponentHandle_t skeleton_left_component_ = 0;
         //vr::VRInputComponentHandle_t skeleton_right_component_ = 0;
+        vr::PropertyContainerHandle_t props_;
     };
 };
