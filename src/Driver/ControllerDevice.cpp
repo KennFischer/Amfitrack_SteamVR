@@ -27,6 +27,34 @@ vr::HmdQuaternion_t rotate(vr::HmdQuaternion_t a, vr::HmdQuaternion_t b)
     return result;
 }
 
+vr::HmdVector3_t RotateVectorByQuaternion(const vr::HmdVector3_t& vector, const vr::HmdQuaternion_t& quat)
+{
+    // Convert the vector into a quaternion (w = 0)
+    vr::HmdQuaternion_t vecQuat;
+    vecQuat.w = 0;
+    vecQuat.x = vector.v[0];
+    vecQuat.y = vector.v[1];
+    vecQuat.z = vector.v[2];
+
+    // Conjugate of the quaternion
+    vr::HmdQuaternion_t quatConj;
+    quatConj.w = quat.w;
+    quatConj.x = -quat.x;
+    quatConj.y = -quat.y;
+    quatConj.z = -quat.z;
+
+    // Perform the rotation: result = quat * vecQuat * quatConj
+    vr::HmdQuaternion_t rotatedQuat = rotate(rotate(quat, vecQuat), quatConj);
+
+    // Return the rotated vector (x, y, z of the quaternion)
+    vr::HmdVector3_t resultVector;
+    resultVector.v[0] = rotatedQuat.x;
+    resultVector.v[1] = rotatedQuat.y;
+    resultVector.v[2] = rotatedQuat.z;
+
+    return resultVector;
+}
+
 vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId)
 {
     this->device_index_ = unObjectId;
@@ -150,12 +178,6 @@ void AmfitrackDriver::ControllerDevice::Update()
     // Get the orientation of the hmd from the 3x4 matrix GetRawTrackedDevicePoses returns
     vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
 
-    std::stringstream hmd_x, hmd_y, hmd_z;
-    hmd_x << static_cast<double>(hmd_position.v[0]);
-    hmd_y << static_cast<double>(hmd_position.v[1]);
-    hmd_z << static_cast<double>(hmd_position.v[2]);
-    std::string hmd_message = "HMD Pose hmd_X: " + hmd_x.str() + " | hmd_Y: " + hmd_y.str() + " | hmd_Z: " + hmd_z.str();
-    GetDriver()->Log(hmd_message);
 
     // Setup pose for this frame
     auto pose = IVRDevice::MakeDefaultPose();
@@ -184,13 +206,21 @@ void AmfitrackDriver::ControllerDevice::Update()
         -position.position_z_in_m,
     };
 
+    vr::HmdVector3_t offset_position_source =
+    {
+        0,
+        0.1f,
+        -0.1f,
+    };
+
     // Rotate our offset by the hmd quaternion (so the controllers are always facing towards us), and add then add the position of the hmd to put it into position.
     const vr::HmdVector3_t positionhmd_sensor = hmd_position + (offset_position * hmd_orientation);
+    const vr::HmdVector3_t positionhmd_source = offset_position_source * hmd_orientation;
 
     // copy our position to our pose
-    pose.vecPosition[0] = positionhmd_sensor.v[0];
-    pose.vecPosition[1] = positionhmd_sensor.v[1];
-    pose.vecPosition[2] = positionhmd_sensor.v[2];
+    pose.vecPosition[0] = positionhmd_sensor.v[0] + positionhmd_source.v[0];
+    pose.vecPosition[1] = positionhmd_sensor.v[1] + positionhmd_source.v[1];
+    pose.vecPosition[2] = positionhmd_sensor.v[2] + positionhmd_source.v[2];
 
     // pitch the controller 90 degrees so the face of the controller is facing towards us
     pose.qRotation.w = position.orientation_w;
