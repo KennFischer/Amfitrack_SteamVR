@@ -199,11 +199,11 @@ void AmfitrackDriver::ControllerDevice::Update()
     lib_AmfiProt_Amfitrack_Pose_t position;
     AMFITRACK.getDevicePose(this->deviceID_, &position);
 
-    vr::HmdVector3_t offset_position =
+    vr::HmdVector3_t offset_position_controller =
     {
         position.position_x_in_m,
         -position.position_y_in_m,
-        -position.position_z_in_m,
+        -position.position_z_in_m + 0.02f,
     };
 
     vr::HmdVector3_t offset_position_source =
@@ -214,7 +214,7 @@ void AmfitrackDriver::ControllerDevice::Update()
     };
 
     // Rotate our offset by the hmd quaternion (so the controllers are always facing towards us), and add then add the position of the hmd to put it into position.
-    const vr::HmdVector3_t positionhmd_sensor = hmd_position + (offset_position * hmd_orientation);
+    const vr::HmdVector3_t positionhmd_sensor = hmd_position + (offset_position_controller * hmd_orientation);
     const vr::HmdVector3_t positionhmd_source = offset_position_source * hmd_orientation;
 
     // copy our position to our pose
