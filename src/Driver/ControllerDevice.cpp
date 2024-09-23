@@ -16,44 +16,6 @@ std::string AmfitrackDriver::ControllerDevice::GetSerial()
     return this->serial_;
 }
 
-vr::HmdQuaternion_t rotate(vr::HmdQuaternion_t a, vr::HmdQuaternion_t b)
-{
-    vr::HmdQuaternion_t result;
-    result.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
-    result.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
-    result.y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
-    result.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
-
-    return result;
-}
-
-vr::HmdVector3_t RotateVectorByQuaternion(const vr::HmdVector3_t& vector, const vr::HmdQuaternion_t& quat)
-{
-    // Convert the vector into a quaternion (w = 0)
-    vr::HmdQuaternion_t vecQuat;
-    vecQuat.w = 0;
-    vecQuat.x = vector.v[0];
-    vecQuat.y = vector.v[1];
-    vecQuat.z = vector.v[2];
-
-    // Conjugate of the quaternion
-    vr::HmdQuaternion_t quatConj;
-    quatConj.w = quat.w;
-    quatConj.x = -quat.x;
-    quatConj.y = -quat.y;
-    quatConj.z = -quat.z;
-
-    // Perform the rotation: result = quat * vecQuat * quatConj
-    vr::HmdQuaternion_t rotatedQuat = rotate(rotate(quat, vecQuat), quatConj);
-
-    // Return the rotated vector (x, y, z of the quaternion)
-    vr::HmdVector3_t resultVector;
-    resultVector.v[0] = rotatedQuat.x;
-    resultVector.v[1] = rotatedQuat.y;
-    resultVector.v[2] = rotatedQuat.z;
-
-    return resultVector;
-}
 
 vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId)
 {
@@ -136,126 +98,97 @@ vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId
     return vr::VRInitError_None;
 }
 
+// Utility function for quaternion multiplication
+vr::HmdQuaternion_t MultiplyQuaternions(const vr::HmdQuaternion_t& q1, const vr::HmdQuaternion_t& q2)
+{
+    vr::HmdQuaternion_t result;
+    result.w = q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z;
+    result.x = q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y;
+    result.y = q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x;
+    result.z = q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w;
+    return result;
+}
+
+// Utility function for vector addition
+vr::HmdVector3_t AddVectors(const vr::HmdVector3_t& v1, const vr::HmdVector3_t& v2)
+{
+    vr::HmdVector3_t result;
+    result.v[0] = v1.v[0] + v2.v[0];
+    result.v[1] = v1.v[1] + v2.v[1];
+    result.v[2] = v1.v[2] + v2.v[2];
+    return result;
+}
+
+// Utility function to rotate a vector by a quaternion
+vr::HmdVector3_t RotateVectorByQuaternion(const vr::HmdVector3_t& vec, const vr::HmdQuaternion_t& quat)
+{
+    vr::HmdQuaternion_t vecQuat = {0, vec.v[0], vec.v[1], vec.v[2]};
+    vr::HmdQuaternion_t quatConjugate = {quat.w, -quat.x, -quat.y, -quat.z};
+    
+    vr::HmdQuaternion_t resultQuat = MultiplyQuaternions(MultiplyQuaternions(quat, vecQuat), quatConjugate);
+    
+    vr::HmdVector3_t result = {resultQuat.x, resultQuat.y, resultQuat.z};
+    return result;
+}
+
+vr::HmdQuaternion_t HmdQuaternion_FromMatrix(const vr::HmdMatrix34_t& matrix)
+{
+    vr::HmdQuaternion_t q{};
+    q.w = sqrt(fmax(0, 1 + matrix.m[0][0] + matrix.m[1][1] + matrix.m[2][2])) / 2;
+    q.x = sqrt(fmax(0, 1 + matrix.m[0][0] - matrix.m[1][1] - matrix.m[2][2])) / 2;
+    q.y = sqrt(fmax(0, 1 - matrix.m[0][0] + matrix.m[1][1] - matrix.m[2][2])) / 2;
+    q.z = sqrt(fmax(0, 1 - matrix.m[0][0] - matrix.m[1][1] + matrix.m[2][2])) / 2;
+    q.x = copysign(q.x, matrix.m[2][1] - matrix.m[1][2]);
+    q.y = copysign(q.y, matrix.m[0][2] - matrix.m[2][0]);
+    q.z = copysign(q.z, matrix.m[1][0] - matrix.m[0][1]);
+    return q;
+}
+
 void AmfitrackDriver::ControllerDevice::Update()
 {
     if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
         return;
 
-    // Check if this device was asked to be identified
-    auto events = GetDriver()->GetOpenVREvents();
-    for (auto event : events)
-    {
-        // Note here, event.trackedDeviceIndex does not necissarily equal this->device_index_, not sure why, but the component handle will match so we can just use that instead
-        // if (event.trackedDeviceIndex == this->device_index_) {
-        if (event.eventType == vr::EVREventType::VREvent_Input_HapticVibration)
-        {
-            if (event.data.hapticVibration.componentHandle == this->haptic_component_)
-            {
-                this->did_vibrate_ = true;
-            }
-        }
-        //}
-    }
-
-    // Check if we need to keep vibrating
-    if (this->did_vibrate_)
-    {
-        this->vibrate_anim_state_ += (GetDriver()->GetLastFrameTime().count() / 1000.f);
-        if (this->vibrate_anim_state_ > 1.0f)
-        {
-            this->did_vibrate_ = false;
-            this->vibrate_anim_state_ = 0.0f;
-        }
-    }
     vr::TrackedDevicePose_t hmd_pose{};
-
-    // GetRawTrackedDevicePoses expects an array.
-    // We only want the hmd pose, which is at index 0 of the array so we can just pass the struct in directly, instead of in an array
     vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1);
 
-    // Get the position of the hmd from the 3x4 matrix GetRawTrackedDevicePoses returns
     vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(hmd_pose.mDeviceToAbsoluteTracking);
-    // Get the orientation of the hmd from the 3x4 matrix GetRawTrackedDevicePoses returns
     vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
 
-
-    // Setup pose for this frame
     auto pose = IVRDevice::MakeDefaultPose();
 
-    // Find a HMD
-    auto devices = GetDriver()->GetDevices();
     AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
     if (!AMFITRACK.getDeviceActive(this->deviceID_))
     {
-        std::stringstream ss;
-        ss << static_cast<int>(this->deviceID_); // Convert to int for stream insertion
-        std::string message = "No Pose for this device: " + ss.str();
-        GetDriver()->Log(message.c_str());
         pose.poseIsValid = false;
-        // this->Deactivate();
         return;
     }
 
     lib_AmfiProt_Amfitrack_Pose_t position;
     AMFITRACK.getDevicePose(this->deviceID_, &position);
 
-    vr::HmdVector3_t offset_position_controller =
-    {
-        position.position_x_in_m,
-        -position.position_y_in_m,
-        -position.position_z_in_m + 0.02f,
-    };
+    // Offset and position
+    vr::HmdVector3_t offset_position_controller = { position.position_x_in_m, -position.position_y_in_m, -position.position_z_in_m + 0.02f };
+    vr::HmdVector3_t offset_position_source = { 0, 0.1f, -0.1f };
 
-    vr::HmdVector3_t offset_position_source =
-    {
-        0,
-        0.1f,
-        -0.1f,
-    };
+    // Optimized position calculation using the new math functions
+    vr::HmdVector3_t positionhmd_sensor = AddVectors(RotateVectorByQuaternion(offset_position_controller, hmd_orientation), hmd_position);
+    vr::HmdVector3_t positionhmd_source = RotateVectorByQuaternion(offset_position_source, hmd_orientation);
 
-    // Rotate our offset by the hmd quaternion (so the controllers are always facing towards us), and add then add the position of the hmd to put it into position.
-    const vr::HmdVector3_t positionhmd_sensor = hmd_position + (offset_position_controller * hmd_orientation);
-    const vr::HmdVector3_t positionhmd_source = offset_position_source * hmd_orientation;
-
-    // copy our position to our pose
     pose.vecPosition[0] = positionhmd_sensor.v[0] + positionhmd_source.v[0];
     pose.vecPosition[1] = positionhmd_sensor.v[1] + positionhmd_source.v[1];
     pose.vecPosition[2] = positionhmd_sensor.v[2] + positionhmd_source.v[2];
 
-    // pitch the controller 90 degrees so the face of the controller is facing towards us
-    pose.qRotation.w = position.orientation_w;
-    pose.qRotation.x = position.orientation_x;
-    pose.qRotation.y = -position.orientation_y;
-    pose.qRotation.z = -position.orientation_z;
+    // Optimized quaternion rotations
+    pose.qRotation = { position.orientation_w, position.orientation_x, -position.orientation_y, -position.orientation_z };
 
-    std::stringstream x, y, z;
-    x << static_cast<double>(pose.vecPosition[0]);
-    y << static_cast<double>(pose.vecPosition[1]);
-    z << static_cast<double>(pose.vecPosition[2]);
-    std::string message = "Pose X: " + x.str() + " | Y: " + y.str() + " | Z: " + z.str();
-    GetDriver()->Log(std::to_string(this->deviceID_) + message);
+    vr::HmdQuaternion_t rotationQuatY = { 0.7071068, 0, 0.7071068, 0 };
+    vr::HmdQuaternion_t rotationQuatX = { 0.7071068, 0, 0, 0.7071068 };
+    vr::HmdQuaternion_t rotationQuatZ = { 0, 1, 0, 0 };
 
-    vr::HmdQuaternion_t rotationQuat = {0};
-    // Rotate 90 degrees around Y-axis
-    rotationQuat.y = 0.7071068;
-    rotationQuat.w = 0.7071068;
-    pose.qRotation = rotate(pose.qRotation, rotationQuat);
-
-    // Rotate 90 degrees around X-axis
-    rotationQuat.x = 0;
-    rotationQuat.y = 0;
-    rotationQuat.z = -0.7071068;
-    rotationQuat.w = 0.7071068;
-    pose.qRotation = rotate(pose.qRotation, rotationQuat);
-
-    // Rotate 180 degrees around the Z-axis
-    rotationQuat.x = 0;
-    rotationQuat.y = 1;
-    rotationQuat.z = 0;
-    rotationQuat.w = 0;
-    pose.qRotation = rotate(pose.qRotation, rotationQuat);
-
-    pose.qRotation = hmd_orientation * pose.qRotation;
+    pose.qRotation = MultiplyQuaternions(MultiplyQuaternions(pose.qRotation, rotationQuatY), rotationQuatX);
+    pose.qRotation = MultiplyQuaternions(pose.qRotation, rotationQuatZ);
+    pose.qRotation = MultiplyQuaternions(hmd_orientation, pose.qRotation);
 
     lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
     AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
@@ -265,38 +198,20 @@ void AmfitrackDriver::ControllerDevice::Update()
 
     if (this->handedness_ == Handedness::RIGHT)
     {
-        if (ButtonPressed)
-        {
-            GetDriver()->Log("Right sensor button pressed");
-        }
         GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
         GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
     }
     else if (this->handedness_ == Handedness::LEFT)
     {
-        if (ButtonPressed)
-        {
-            GetDriver()->Log("Left sensor button pressed");
-        }
         GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_click_component_, ButtonPressed, 0);
         GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed, 0);
     }
 
-    // Check if we need to press any buttons (I am only hooking up the A button here but the process is the same for the others)
-    // You will still need to go into the games button bindings and hook up each one (ie. a to left click, b to right click, etc.) for them to work properly
-    // if (GetAsyncKeyState(0x45 /* E */) != 0) {
-    //     GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, true, 0);
-    //     GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, true, 0);
-    // }
-    // else {
-    //     GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, false, 0);
-    //     GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, false, 0);
-    // }
-
-    // Post pose
     GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
     this->last_pose_ = pose;
 }
+
+
 
 DeviceType AmfitrackDriver::ControllerDevice::GetDeviceType()
 {
