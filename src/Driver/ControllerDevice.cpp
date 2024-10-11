@@ -96,170 +96,79 @@ vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId
     return vr::VRInitError_None;
 }
 
-void AmfitrackDriver::ControllerDevice::Update()
-{
-    // Ensure the device index is valid
-    if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
-        return;
-
-    // Initialize the default pose for the controller
-    auto pose = IVRDevice::MakeDefaultPose();
-
-    // Get the Amfitrack system instance
-    AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
-
-    // Check if the device is active
-    if (!AMFITRACK.getDeviceActive(this->deviceID_))
-    {
-        pose.poseIsValid = false; // Mark pose as invalid
-        GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-        return;  // Exit if the device is not active
-    }
-
-    // Get the raw tracker pose from the Amfitrack system
-    lib_AmfiProt_Amfitrack_Pose_t tracker_raw_pose;
-    AMFITRACK.getDevicePose(4, &tracker_raw_pose); // Assuming device ID 4 is the tracker
-
-    // Retrieve the source pose in SteamVR coordinates
-    vr::DriverPose_t source_pose = GetSourcePose(tracker_raw_pose); // Pass the tracker_raw_pose
-
-    // Get the controller's raw pose from the Amfitrack system
-    lib_AmfiProt_Amfitrack_Pose_t controller_raw_pose;
-    AMFITRACK.getDevicePose(this->deviceID_, &controller_raw_pose); // Local controller pose
-
-    // Convert the raw controller pose's position to a vector
-    vr::HmdVector3_t controller_position_local = {
-        controller_raw_pose.position_x_in_m,
-        controller_raw_pose.position_y_in_m,
-        controller_raw_pose.position_z_in_m
-    };
-
-    // Calculate the offset of the controller relative to the source in Amfitrack space
-    vr::HmdVector3_t offset_position = {
-        controller_position_local.v[0], 
-        controller_position_local.v[1], 
-        controller_position_local.v[2]
-    };
-
-    // Transform the offset position by the source's orientation to get its position in SteamVR space
-    vr::HmdVector3_t transformed_offset = RotateVectorByQuaternion(offset_position, source_pose.qRotation);
-
-    // Calculate the final position of the controller in SteamVR space
-    pose.vecPosition[0] = source_pose.vecPosition[0] + transformed_offset.v[0]; // X position
-    pose.vecPosition[1] = source_pose.vecPosition[1] + transformed_offset.v[1]; // Y position
-    pose.vecPosition[2] = source_pose.vecPosition[2] + transformed_offset.v[2]; // Z position
-
-    // Handle the orientation of the controller
-    vr::HmdQuaternion_t controller_orientation_local = {
-        controller_raw_pose.orientation_w,
-        controller_raw_pose.orientation_x,
-        controller_raw_pose.orientation_y,
-        controller_raw_pose.orientation_z
-    };
-
-    // Combine the source orientation with the controller's local orientation
-    pose.qRotation = MultiplyQuaternions(source_pose.qRotation, controller_orientation_local);
-
-    // Normalize the quaternion to ensure valid rotation
-    pose.qRotation = HmdQuaternion_Normalize(pose.qRotation);
-
-    // Handle button press states
-    lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
-    AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
-    uint16_t gpio_state = sensorMeasurement.gpio_state;
-
-    bool ButtonPressed = CHECK_BIT(gpio_state, 3); // Read button state
-
-    // Update button states based on handedness
-    if (this->handedness_ == Handedness::RIGHT)
-    {
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
-
-        // Optional system button handling
-        if (GetAsyncKeyState('O') & 0x8000)
-        {
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, true, 0);
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_touch_component_, true, 0);
-        }
-        else
-        {
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, false, 0);
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_touch_component_, false, 0);
-        }
-    }
-    else if (this->handedness_ == Handedness::LEFT)
-    {
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_click_component_, ButtonPressed, 0);
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed, 0);
-    }
-
-    // Update the pose in SteamVR
-    pose.poseIsValid = true; // Mark the pose as valid for SteamVR
-    pose.result = vr::TrackingResult_Running_OK;
-    GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-
-    // Store the last pose for reference
-    this->last_pose_ = pose;
-}
-
 // void AmfitrackDriver::ControllerDevice::Update()
 // {
+//     // Ensure the device index is valid
 //     if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
 //         return;
 
+//     // Initialize the default pose for the controller
 //     auto pose = IVRDevice::MakeDefaultPose();
 
+//     // Get the Amfitrack system instance
 //     AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
+
+//     // Check if the device is active
 //     if (!AMFITRACK.getDeviceActive(this->deviceID_))
 //     {
-//         pose.poseIsValid = false;
-//         return;
+//         pose.poseIsValid = false; // Mark pose as invalid
+//         GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+//         return;  // Exit if the device is not active
 //     }
 
-//     lib_AmfiProt_Amfitrack_Pose_t tracker_pose;
-//     AMFITRACK.getDevicePose(4, &tracker_pose);
-//     vr::DriverPose_t source_pose = GetSourcePose(4, tracker_pose);
+//     // Get the raw tracker pose from the Amfitrack system
+//     lib_AmfiProt_Amfitrack_Pose_t tracker_raw_pose;
+//     AMFITRACK.getDevicePose(4, &tracker_raw_pose); // Assuming device ID 4 is the tracker
 
-//     lib_AmfiProt_Amfitrack_Pose_t position;
-//     AMFITRACK.getDevicePose(this->deviceID_, &position);
+//     // Retrieve the source pose in SteamVR coordinates
+//     vr::DriverPose_t source_pose = GetSourcePose(tracker_raw_pose); // Pass the tracker_raw_pose
 
-//     // // Apply fixed offsets like in the tracker to decouple from HMD movement
-//     // vr::HmdVector3_t offset_position_controller = {
-//     //     position.position_x_in_m,   // X position (apply 10cm left shift)
-//     //     -position.position_y_in_m + 1.40f, // Y position (no change here)
-//     //     -position.position_z_in_m + 0.55f  // Z position (apply 60cm backward shift in one step)
-//     // };
+//     // Get the controller's raw pose from the Amfitrack system
+//     lib_AmfiProt_Amfitrack_Pose_t controller_raw_pose;
+//     AMFITRACK.getDevicePose(this->deviceID_, &controller_raw_pose); // Local controller pose
 
-//     // // Set the position directly, no HMD involvement
-//     // pose.vecPosition[0] = offset_position_controller.v[0];
-//     // pose.vecPosition[1] = offset_position_controller.v[1];
-//     // pose.vecPosition[2] = offset_position_controller.v[2];
+//     // Convert the raw controller pose's position to a vector
+//     vr::HmdVector3_t controller_position_local = {
+//         controller_raw_pose.position_x_in_m,
+//         controller_raw_pose.position_y_in_m,
+//         controller_raw_pose.position_z_in_m
+//     };
 
-//     // // Set rotation directly from the device's orientation, applying necessary quaternion adjustments
-//     // pose.qRotation = {
-//     //     position.orientation_w,
-//     //     position.orientation_x,
-//     //     -position.orientation_y,
-//     //     -position.orientation_z};
+//     // Calculate the offset of the controller relative to the source in Amfitrack space
+//     vr::HmdVector3_t offset_position = {
+//         controller_position_local.v[0], 
+//         controller_position_local.v[1], 
+//         controller_position_local.v[2]
+//     };
 
-//     // // Apply any additional fixed rotations (if required)
-//     // vr::HmdQuaternion_t rotationQuatY = {0.7071068, 0, 0.7071068, 0}; // 90-degree Y rotation
-//     // vr::HmdQuaternion_t rotationQuatX = {0.7071068, 0, 0, 0.7071068}; // 90-degree X rotation
-//     // vr::HmdQuaternion_t rotationQuatZ = {0, 1, 0, 0};                 // 180-degree Z rotation
+//     // Transform the offset position by the source's orientation to get its position in SteamVR space
+//     vr::HmdVector3_t transformed_offset = RotateVectorByQuaternion(offset_position, source_pose.qRotation);
 
-//     // // Combine the rotations
-//     // pose.qRotation = MultiplyQuaternions(MultiplyQuaternions(pose.qRotation, rotationQuatY), rotationQuatX);
-//     // pose.qRotation = MultiplyQuaternions(pose.qRotation, rotationQuatZ);
+//     // Calculate the final position of the controller in SteamVR space
+//     pose.vecPosition[0] = source_pose.vecPosition[0] + transformed_offset.v[0]; // X position
+//     pose.vecPosition[1] = source_pose.vecPosition[1] + transformed_offset.v[1]; // Y position
+//     pose.vecPosition[2] = source_pose.vecPosition[2] + transformed_offset.v[2]; // Z position
 
-//     // pose.qRotation = HmdQuaternion_Normalize(pose.qRotation);
+//     // Handle the orientation of the controller
+//     vr::HmdQuaternion_t controller_orientation_local = {
+//         controller_raw_pose.orientation_w,
+//         controller_raw_pose.orientation_x,
+//         controller_raw_pose.orientation_y,
+//         controller_raw_pose.orientation_z
+//     };
+
+//     // Combine the source orientation with the controller's local orientation
+//     pose.qRotation = MultiplyQuaternions(source_pose.qRotation, controller_orientation_local);
+
+//     // Normalize the quaternion to ensure valid rotation
+//     pose.qRotation = HmdQuaternion_Normalize(pose.qRotation);
 
 //     // Handle button press states
 //     lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
 //     AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
 //     uint16_t gpio_state = sensorMeasurement.gpio_state;
 
-//     bool ButtonPressed = CHECK_BIT(gpio_state, 3);
+//     bool ButtonPressed = CHECK_BIT(gpio_state, 3); // Read button state
 
 //     // Update button states based on handedness
 //     if (this->handedness_ == Handedness::RIGHT)
@@ -267,6 +176,7 @@ void AmfitrackDriver::ControllerDevice::Update()
 //         GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
 //         GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
 
+//         // Optional system button handling
 //         if (GetAsyncKeyState('O') & 0x8000)
 //         {
 //             GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, true, 0);
@@ -285,9 +195,99 @@ void AmfitrackDriver::ControllerDevice::Update()
 //     }
 
 //     // Update the pose in SteamVR
+//     pose.poseIsValid = true; // Mark the pose as valid for SteamVR
+//     pose.result = vr::TrackingResult_Running_OK;
 //     GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+
+//     // Store the last pose for reference
 //     this->last_pose_ = pose;
 // }
+
+void AmfitrackDriver::ControllerDevice::Update()
+{
+    if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
+        return;
+
+    auto pose = IVRDevice::MakeDefaultPose();
+
+    AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
+    if (!AMFITRACK.getDeviceActive(this->deviceID_))
+    {
+        pose.poseIsValid = false;
+        return;
+    }
+
+    // lib_AmfiProt_Amfitrack_Pose_t tracker_pose;
+    // AMFITRACK.getDevicePose(4, &tracker_pose);
+    // vr::DriverPose_t source_pose = GetSourcePose(4, tracker_pose);
+
+    lib_AmfiProt_Amfitrack_Pose_t position;
+    AMFITRACK.getDevicePose(this->deviceID_, &position);
+
+    // Apply fixed offsets like in the tracker to decouple from HMD movement
+    vr::HmdVector3_t offset_position_controller = {
+        position.position_x_in_m,   // X position (apply 10cm left shift)
+        -position.position_y_in_m + 1.40f, // Y position (no change here)
+        -position.position_z_in_m + 0.55f  // Z position (apply 60cm backward shift in one step)
+    };
+
+    // Set the position directly, no HMD involvement
+    pose.vecPosition[0] = offset_position_controller.v[0];
+    pose.vecPosition[1] = offset_position_controller.v[1];
+    pose.vecPosition[2] = offset_position_controller.v[2];
+
+    // Set rotation directly from the device's orientation, applying necessary quaternion adjustments
+    pose.qRotation = {
+        position.orientation_w,
+        position.orientation_x,
+        -position.orientation_y,
+        -position.orientation_z};
+
+    // Apply any additional fixed rotations (if required)
+    vr::HmdQuaternion_t rotationQuatY = {0.7071068, 0, 0.7071068, 0}; // 90-degree Y rotation
+    vr::HmdQuaternion_t rotationQuatX = {0.7071068, 0, 0, 0.7071068}; // 90-degree X rotation
+    vr::HmdQuaternion_t rotationQuatZ = {0, 1, 0, 0};                 // 180-degree Z rotation
+
+    // Combine the rotations
+    pose.qRotation = MultiplyQuaternions(MultiplyQuaternions(pose.qRotation, rotationQuatY), rotationQuatX);
+    pose.qRotation = MultiplyQuaternions(pose.qRotation, rotationQuatZ);
+
+    pose.qRotation = HmdQuaternion_Normalize(pose.qRotation);
+
+    // Handle button press states
+    lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
+    AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
+    uint16_t gpio_state = sensorMeasurement.gpio_state;
+
+    bool ButtonPressed = CHECK_BIT(gpio_state, 3);
+
+    // Update button states based on handedness
+    if (this->handedness_ == Handedness::RIGHT)
+    {
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
+
+        if (GetAsyncKeyState('O') & 0x8000)
+        {
+            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, true, 0);
+            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_touch_component_, true, 0);
+        }
+        else
+        {
+            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, false, 0);
+            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_touch_component_, false, 0);
+        }
+    }
+    else if (this->handedness_ == Handedness::LEFT)
+    {
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_click_component_, ButtonPressed, 0);
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed, 0);
+    }
+
+    // Update the pose in SteamVR
+    GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+    this->last_pose_ = pose;
+}
 
 DeviceType AmfitrackDriver::ControllerDevice::GetDeviceType()
 {
