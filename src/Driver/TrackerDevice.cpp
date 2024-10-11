@@ -1,89 +1,16 @@
 #include "TrackerDevice.hpp"
 #include <Windows.h>
+#include "amfitrack_cpp_SDK/Amfitrack.hpp"
+#include "vrmath.h"
 
-AmfitrackDriver::TrackerDevice::TrackerDevice(std::string serial):
-    serial_(serial)
+AmfitrackDriver::TrackerDevice::TrackerDevice(uint8_t deviceId, std::string serial) : deviceID_(deviceId),
+                                                                                      serial_(serial)
 {
 }
 
 std::string AmfitrackDriver::TrackerDevice::GetSerial()
 {
     return this->serial_;
-}
-
-void AmfitrackDriver::TrackerDevice::Update()
-{
-    if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
-        return;
-
-    // Check if this device was asked to be identified
-    auto events = GetDriver()->GetOpenVREvents();
-    for (auto event : events) {
-        // Note here, event.trackedDeviceIndex does not necissarily equal this->device_index_, not sure why, but the component handle will match so we can just use that instead
-        //if (event.trackedDeviceIndex == this->device_index_) {
-        if (event.eventType == vr::EVREventType::VREvent_Input_HapticVibration) {
-            if (event.data.hapticVibration.componentHandle == this->haptic_component_) {
-                this->did_vibrate_ = true;
-            }
-        }
-        //}
-    }
-
-    // Check if we need to keep vibrating
-    if (this->did_vibrate_) {
-        this->vibrate_anim_state_ += (GetDriver()->GetLastFrameTime().count()/1000.f);
-        if (this->vibrate_anim_state_ > 1.0f) {
-            this->did_vibrate_ = false;
-            this->vibrate_anim_state_ = 0.0f;
-        }
-    }
-
-    // Setup pose for this frame
-    auto pose = IVRDevice::MakeDefaultPose();
-
-    // Find a HMD
-    auto devices = GetDriver()->GetDevices();
-    auto hmd = std::find_if(devices.begin(), devices.end(), [](const std::shared_ptr<IVRDevice>& device_ptr) {return device_ptr->GetDeviceType() == DeviceType::HMD; });
-    if (hmd != devices.end()) {
-        // Found a HMD
-        vr::DriverPose_t hmd_pose = (*hmd)->GetPose();
-
-        // Here we setup some transforms so our controllers are offset from the headset by a small amount so we can see them
-        linalg::vec<float, 3> hmd_position{ (float)hmd_pose.vecPosition[0], (float)hmd_pose.vecPosition[1], (float)hmd_pose.vecPosition[2] };
-        linalg::vec<float, 4> hmd_rotation{ (float)hmd_pose.qRotation.x, (float)hmd_pose.qRotation.y, (float)hmd_pose.qRotation.z, (float)hmd_pose.qRotation.w };
-
-        // Do shaking animation if haptic vibration was requested
-        float controller_y = -0.35f + 0.01f * std::sinf(8 * 3.1415f * vibrate_anim_state_);
-
-        linalg::vec<float, 3> hmd_pose_offset = { 0.f, controller_y, -0.5f };
-
-        hmd_pose_offset = linalg::qrot(hmd_rotation, hmd_pose_offset);
-
-        linalg::vec<float, 3> final_pose = hmd_pose_offset + hmd_position;
-
-        pose.vecPosition[0] = final_pose.x;
-        pose.vecPosition[1] = final_pose.y;
-        pose.vecPosition[2] = final_pose.z;
-
-        pose.qRotation.w = hmd_rotation.w;
-        pose.qRotation.x = hmd_rotation.x;
-        pose.qRotation.y = hmd_rotation.y;
-        pose.qRotation.z = hmd_rotation.z;
-    }
-
-    // Post pose
-    GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-    this->last_pose_ = pose;
-}
-
-DeviceType AmfitrackDriver::TrackerDevice::GetDeviceType()
-{
-    return DeviceType::TRACKER;
-}
-
-vr::TrackedDeviceIndex_t AmfitrackDriver::TrackerDevice::GetDeviceIndex()
-{
-    return this->device_index_;
 }
 
 vr::EVRInitError AmfitrackDriver::TrackerDevice::Activate(uint32_t unObjectId)
@@ -95,39 +22,118 @@ vr::EVRInitError AmfitrackDriver::TrackerDevice::Activate(uint32_t unObjectId)
     // Get the properties handle
     auto props = GetDriver()->GetProperties()->TrackedDeviceToPropertyContainer(this->device_index_);
 
-    // Setup inputs and outputs
-    GetDriver()->GetInput()->CreateHapticComponent(props, "/output/haptic", &this->haptic_component_);
-
-    GetDriver()->GetInput()->CreateBooleanComponent(props, "/input/system/click", &this->system_click_component_);
-    GetDriver()->GetInput()->CreateBooleanComponent(props, "/input/system/touch", &this->system_touch_component_);
-
     // Set some universe ID (Must be 2 or higher)
     GetDriver()->GetProperties()->SetUint64Property(props, vr::Prop_CurrentUniverseId_Uint64, 2);
-    
+
     // Set up a model "number" (not needed but good to have)
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_ModelNumber_String, "example_tracker");
+    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_ModelNumber_String, "Amfitrack_tracker");
+
+    // Set up a render model path
+    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, "vr_controller_vive_1_5");
 
     // Opt out of hand selection
     GetDriver()->GetProperties()->SetInt32Property(props, vr::Prop_ControllerRoleHint_Int32, vr::ETrackedControllerRole::TrackedControllerRole_OptOut);
 
-    // Set up a render model path
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, "vr_controller_05_wireless_b");
-
-    // Set controller profile
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_InputProfilePath_String, "{amfitrack}/input/example_tracker_bindings.json");
-
-    // Set the icon
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_NamedIconPathDeviceReady_String, "{amfitrack}/icons/tracker_ready.png");
-
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_NamedIconPathDeviceOff_String, "{amfitrack}/icons/tracker_not_ready.png");
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_NamedIconPathDeviceSearching_String, "{amfitrack}/icons/tracker_not_ready.png");
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{amfitrack}/icons/tracker_not_ready.png");
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{amfitrack}/icons/tracker_not_ready.png");
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_NamedIconPathDeviceNotReady_String, "{amfitrack}/icons/tracker_not_ready.png");
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_NamedIconPathDeviceStandby_String, "{amfitrack}/icons/tracker_not_ready.png");
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_NamedIconPathDeviceAlertLow_String, "{amfitrack}/icons/tracker_not_ready.png");
-
     return vr::EVRInitError::VRInitError_None;
+}
+
+void AmfitrackDriver::TrackerDevice::Update()
+{
+    // Check if the device is valid
+    if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
+        return;
+
+    // Get the HMD's pose in SteamVR
+    vr::TrackedDevicePose_t hmd_pose{};
+    vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1); // Fetch the HMD pose
+
+    // Check if the HMD pose is valid
+    if (hmd_pose.eTrackingResult == vr::TrackingResult_Running_OK)
+    {
+        // Fetch the HMD position and orientation
+        vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(hmd_pose.mDeviceToAbsoluteTracking);
+        vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
+
+        // Create a default pose for the tracker
+        auto pose = IVRDevice::MakeDefaultPose();
+
+        // Define the offset (5 cm forward and 12 cm up)
+        vr::HmdVector3_t offset_position = {0.05f, 0.12f, 0.0f}; // X = 5 cm forward, Y = 12 cm above, Z = 0
+
+        // Rotate the offset by the HMD's orientation
+        vr::HmdVector3_t rotated_offset = RotateVectorByQuaternion(offset_position, hmd_orientation);
+
+        // Calculate the tracker's position in SteamVR space
+        pose.vecPosition[0] = hmd_position.v[0] + rotated_offset.v[0]; // X position
+        pose.vecPosition[1] = hmd_position.v[1] + rotated_offset.v[1]; // Y position
+        pose.vecPosition[2] = hmd_position.v[2] + rotated_offset.v[2]; // Z position
+
+        // Set the tracker's rotation to match the HMD's rotation
+        pose.qRotation = hmd_orientation;
+
+        // Mark the pose as valid
+        pose.poseIsValid = true;
+        pose.result = vr::TrackingResult_Running_OK;
+
+        // Update in SteamVR
+        GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+
+        // Store the last pose for reference
+        this->last_pose_ = pose;
+    }
+    else
+    {
+        // If HMD pose is invalid, mark the tracker pose as invalid
+        auto pose = IVRDevice::MakeDefaultPose();
+        pose.poseIsValid = false;
+        GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+    }
+}
+
+// void AmfitrackDriver::TrackerDevice::Update()
+// {
+//     // Check if the device is valid
+//     if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
+//         return;
+
+//     // Get the HMD's pose in SteamVR (assuming it's the reference point)
+//     vr::TrackedDevicePose_t hmd_pose{};
+//     vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1); // Fetch the HMD pose
+//     vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(hmd_pose.mDeviceToAbsoluteTracking);
+//     vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
+
+//     // Create a default pose for the tracker
+//     auto pose = IVRDevice::MakeDefaultPose();
+
+//     // Define the offset between the HMD and the tracker (5 cm in front and 12 cm above in meters)
+//     vr::HmdVector3_t offset_position = { 0.05f, 0.12f, 0.0f };  // X = 5 cm forward, Y = 12 cm above, Z = 0
+//     // Rotate the offset by the HMD's orientation (so the offset is always relative to HMD orientation)
+//     vr::HmdVector3_t rotated_offset = RotateVectorByQuaternion(offset_position, hmd_orientation);
+
+//     // Calculate the tracker's position in SteamVR space by adding the rotated offset to the HMD position
+//     pose.vecPosition[0] = hmd_position.v[0] + rotated_offset.v[0];
+//     pose.vecPosition[1] = hmd_position.v[1] + rotated_offset.v[1];
+//     pose.vecPosition[2] = hmd_position.v[2] + rotated_offset.v[2];
+
+//     // Set the tracker's rotation to match the HMD's rotation (since it's attached and aligned with the HMD)
+//     pose.qRotation = hmd_orientation;
+
+//     // Mark the pose as valid and update in SteamVR
+//     pose.poseIsValid = true;
+//     pose.result = vr::TrackingResult_Running_OK;
+//     GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+
+//     this->last_pose_ = pose;
+// }
+
+DeviceType AmfitrackDriver::TrackerDevice::GetDeviceType()
+{
+    return DeviceType::TRACKER;
+}
+
+vr::TrackedDeviceIndex_t AmfitrackDriver::TrackerDevice::GetDeviceIndex()
+{
+    return this->device_index_;
 }
 
 void AmfitrackDriver::TrackerDevice::Deactivate()
@@ -139,12 +145,12 @@ void AmfitrackDriver::TrackerDevice::EnterStandby()
 {
 }
 
-void* AmfitrackDriver::TrackerDevice::GetComponent(const char* pchComponentNameAndVersion)
+void *AmfitrackDriver::TrackerDevice::GetComponent(const char *pchComponentNameAndVersion)
 {
     return nullptr;
 }
 
-void AmfitrackDriver::TrackerDevice::DebugRequest(const char* pchRequest, char* pchResponseBuffer, uint32_t unResponseBufferSize)
+void AmfitrackDriver::TrackerDevice::DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize)
 {
     if (unResponseBufferSize >= 1)
         pchResponseBuffer[0] = 0;
