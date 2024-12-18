@@ -87,6 +87,12 @@ void AmfitrackDriver::TrackerDevice::Update()
         auto pose = IVRDevice::MakeDefaultPose();
         pose.poseIsValid = false;
         GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+
+        // Log invalid state
+        std::string log_message = "TrackerDevice::Update - Device ID: " + std::to_string(this->device_index_) +
+                                  ", Serial: " + this->GetSerial() +
+                                  ", Pose is invalid.";
+        GetDriver()->Log(log_message);
     }
 }
 
