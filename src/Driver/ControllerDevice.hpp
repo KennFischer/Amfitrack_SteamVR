@@ -9,32 +9,34 @@
 #include <Native/DriverFactory.hpp>
 #include <openvr_driver.h>
 
-namespace AmfitrackDriver {
-    class ControllerDevice : public IVRDevice {
-        public:
+namespace AmfitrackDriver
+{
+    class ControllerDevice : public IVRDevice
+    {
+    public:
+        enum class Handedness
+        {
+            LEFT,
+            RIGHT,
+            ANY
+        };
 
-            enum class Handedness {
-                LEFT,
-                RIGHT,
-                ANY
-            };
+        ControllerDevice(uint8_t deviceId, std::string serial, Handedness handedness = Handedness::ANY);
+        ~ControllerDevice() = default;
 
-            ControllerDevice(uint8_t deviceId, std::string serial, Handedness handedness = Handedness::ANY);
-            ~ControllerDevice() = default;
+        // Inherited via IVRDevice
+        virtual std::string GetSerial() override;
+        virtual void Update() override;
+        virtual vr::TrackedDeviceIndex_t GetDeviceIndex() override;
+        virtual DeviceType GetDeviceType() override;
+        virtual Handedness GetHandedness();
 
-            // Inherited via IVRDevice
-            virtual std::string GetSerial() override;
-            virtual void Update() override;
-            virtual vr::TrackedDeviceIndex_t GetDeviceIndex() override;
-            virtual DeviceType GetDeviceType() override;
-            virtual Handedness GetHandedness();
-
-            virtual vr::EVRInitError Activate(uint32_t unObjectId) override;
-            virtual void Deactivate() override;
-            virtual void EnterStandby() override;
-            virtual void* GetComponent(const char* pchComponentNameAndVersion) override;
-            virtual void DebugRequest(const char* pchRequest, char* pchResponseBuffer, uint32_t unResponseBufferSize) override;
-            virtual vr::DriverPose_t GetPose() override;
+        virtual vr::EVRInitError Activate(uint32_t unObjectId) override;
+        virtual void Deactivate() override;
+        virtual void EnterStandby() override;
+        virtual void *GetComponent(const char *pchComponentNameAndVersion) override;
+        virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize) override;
+        virtual vr::DriverPose_t GetPose() override;
 
     private:
         vr::TrackedDeviceIndex_t device_index_ = vr::k_unTrackedDeviceIndexInvalid;
@@ -66,7 +68,6 @@ namespace AmfitrackDriver {
         vr::VRInputComponentHandle_t system_click_component_ = 0;
         vr::VRInputComponentHandle_t system_touch_component_ = 0;
 
-        
         vr::VRInputComponentHandle_t trackpad_click_component_ = 0;
         vr::VRInputComponentHandle_t trackpad_touch_component_ = 0;
         vr::VRInputComponentHandle_t trackpad_x_component_ = 0;
@@ -77,8 +78,9 @@ namespace AmfitrackDriver {
         vr::VRInputComponentHandle_t joystick_x_component_ = 0;
         vr::VRInputComponentHandle_t joystick_y_component_ = 0;
 
-        //vr::VRInputComponentHandle_t skeleton_left_component_ = 0;
-        //vr::VRInputComponentHandle_t skeleton_right_component_ = 0;
+        // vr::VRInputComponentHandle_t skeleton_left_component_ = 0;
+        // vr::VRInputComponentHandle_t skeleton_right_component_ = 0;
         vr::PropertyContainerHandle_t props_;
+        void RegisterButtonPress(uint16_t gpio_state);
     };
 };
