@@ -1,13 +1,14 @@
 #include "PoseHelper.hpp"
-#include "vrmath.h"
+#include <cmath>
 
 AmfitrackDriver::HmdQuaternion_t AmfitrackDriver::PoseHelper::HmdQuaternion_Normalize(const HmdQuaternion_t &q)
 {
     HmdQuaternion_t result{};
     double n = sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
 
-    if (n == 0.0) {
-        return result;  // Return the default zero quaternion if magnitude is zero
+    if (n == 0.0)
+    {
+        return result; // Return the default zero quaternion if magnitude is zero
     }
 
     result.w = q.w / n;
@@ -38,7 +39,7 @@ AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::GetSourcePose(VRPose &gener
         -generic_tracker_pose.Position.v[2]  // Flip Z
     };
 
-        // Invert the Amfitrack tracker position
+    // Invert the Amfitrack tracker position
     HmdVector3_t inverse_amfitrack_tracker_position = {
         -amfitrack_tracker_position.v[0],
         -amfitrack_tracker_position.v[1],
@@ -48,10 +49,10 @@ AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::GetSourcePose(VRPose &gener
     HmdVector3_t tracker_position = tracker_pose_in_steamvr.Position;
 
     // Compute the source position in SteamVR space
-    VRPose steamVR_source_position = {
-        tracker_position.v[0] + inverse_amfitrack_tracker_position.v[0],
-        tracker_position.v[1] + inverse_amfitrack_tracker_position.v[1],
-        tracker_position.v[2] + inverse_amfitrack_tracker_position.v[2]};
+    VRPose steamVR_source_position;
+    steamVR_source_position.Position.v[0] = tracker_position.v[0] + inverse_amfitrack_tracker_position.v[0];
+    steamVR_source_position.Position.v[1] = tracker_position.v[1] + inverse_amfitrack_tracker_position.v[1];
+    steamVR_source_position.Position.v[2] = tracker_position.v[2] + inverse_amfitrack_tracker_position.v[2];
 
     return steamVR_source_position;
 }
@@ -99,7 +100,6 @@ AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::CalculateControllerPose(VRP
 
     // Mark pose as valid
     out_pose.PoseCorrect = true;
-    
+
     return out_pose;
 };
-
