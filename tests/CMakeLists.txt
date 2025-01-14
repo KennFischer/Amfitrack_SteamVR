@@ -12,6 +12,7 @@ add_subdirectory("../libraries/googletest" "googletest_build")
 # 2) Now list your test sources
 set(Sources
     AmfitrackTests.cpp
+    ../src/Driver/PoseHelper.cpp
 )
 
 # 3) Create your test executable
