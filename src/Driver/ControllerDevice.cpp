@@ -1,9 +1,9 @@
 #include "ControllerDevice.hpp"
 #include <Windows.h>
 #include <fstream>
-#include "amfitrack_cpp_SDK/Amfitrack.hpp"
 #include "vrmath.h"
 #include "TrackerDevice.hpp"
+#include "PoseHelper.hpp"
 
 #define CHECK_BIT(var, pos) ((var) & (1 << (pos)))
 
@@ -97,104 +97,17 @@ vr::EVRInitError AmfitrackDriver::ControllerDevice::Activate(uint32_t unObjectId
     return vr::VRInitError_None;
 }
 
-vr::HmdVector3_t GetSourcePose(lib_AmfiProt_Amfitrack_Pose_t &generic_tracker_pose, vr::TrackedDevicePose_t &tracker_pose_in_steamvr)
-{
-    // Convert generic tracker position from Amfitrack to SteamVR space (flip Y, Z)
-    vr::HmdVector3_t amfitrack_tracker_position = {
-        generic_tracker_pose.position_x_in_m,
-        -generic_tracker_pose.position_y_in_m, // Flip Y
-        -generic_tracker_pose.position_z_in_m  // Flip Z
-    };
-
-    // Invert the Amfitrack tracker position
-    vr::HmdVector3_t inverse_amfitrack_tracker_position = {
-        -amfitrack_tracker_position.v[0],
-        -amfitrack_tracker_position.v[1],
-        -amfitrack_tracker_position.v[2]};
-
-    // Get the tracker's position in SteamVR
-    vr::HmdVector3_t tracker_position = HmdVector3_From34Matrix(tracker_pose_in_steamvr.mDeviceToAbsoluteTracking);
-
-    // Compute the source position in SteamVR space
-    vr::HmdVector3_t steamVR_source_position = {
-        tracker_position.v[0] + inverse_amfitrack_tracker_position.v[0],
-        tracker_position.v[1] + inverse_amfitrack_tracker_position.v[1],
-        tracker_position.v[2] + inverse_amfitrack_tracker_position.v[2]};
-
-    return steamVR_source_position;
-}
-
-/// <summary>
-/// Calculates the controller's pose in SteamVR space given the source position and the controller's Amfitrack pose.
-/// This function focuses solely on position/orientation calculation, no button logic.
-/// </summary>
-/// <param name="steamVR_source_position">The stable source position computed by GetSourcePose().</param>
-/// <param name="controller_pose">The controller's pose from Amfitrack.</param>
-/// <returns>A vr::DriverPose_t structure containing the final pose for the controller.</returns>
-vr::DriverPose_t CalculateControllerPose(
-    const vr::HmdVector3_t &steamVR_source_position,
-    const lib_AmfiProt_Amfitrack_Pose_t &controller_pose)
-{
-    // Start with a default pose
-    auto out_pose = AmfitrackDriver::IVRDevice::MakeDefaultPose();
-
-    // Convert the controller's Amfitrack position to SteamVR coordinates (flip Y, Z)
-    vr::HmdVector3_t amfitrack_controller_position = {
-        controller_pose.position_x_in_m,
-        -controller_pose.position_y_in_m, // Flip Y-axis
-        -controller_pose.position_z_in_m  // Flip Z-axis
-    };
-
-    // Compute the controller's position in SteamVR space by adding the controller's Amfitrack-transformed position
-    // to the stable source position
-    vr::HmdVector3_t controller_position_in_vr_space = {
-        steamVR_source_position.v[0] + amfitrack_controller_position.v[0],
-        steamVR_source_position.v[1] + amfitrack_controller_position.v[1],
-        steamVR_source_position.v[2] + amfitrack_controller_position.v[2]};
-
-    out_pose.vecPosition[0] = controller_position_in_vr_space.v[0];
-    out_pose.vecPosition[1] = controller_position_in_vr_space.v[1];
-    out_pose.vecPosition[2] = controller_position_in_vr_space.v[2];
-
-    // Convert the controller's orientation from Amfitrack to SteamVR by flipping Y and Z axes
-    vr::HmdQuaternion_t amfitrack_rotation = {
-        controller_pose.orientation_w,
-        controller_pose.orientation_x,
-        -controller_pose.orientation_y,
-        -controller_pose.orientation_z};
-
-    // Apply the known-good sequence of rotations:
-    // rotationQuatY = {0.7071068, 0, 0.7071068, 0} // 90° Y rotation
-    // rotationQuatX = {0.7071068, 0, 0, 0.7071068} // 90° X rotation
-    // rotationQuatZ = {0, 1, 0, 0}                 // 180° Z rotation
-
-    vr::HmdQuaternion_t rotationQuatY = {0.7071068, 0, 0.7071068, 0}; // 90° Y rotation
-    vr::HmdQuaternion_t rotationQuatX = {0.7071068, 0, 0, 0.7071068}; // 90° X rotation
-    vr::HmdQuaternion_t rotationQuatZ = {0, 1, 0, 0};                 // 180° Z rotation
-
-    // Combine them in the sequence used previously
-    vr::HmdQuaternion_t corrected_rotation = MultiplyQuaternions(amfitrack_rotation, rotationQuatY);
-    corrected_rotation = MultiplyQuaternions(corrected_rotation, rotationQuatX);
-    corrected_rotation = MultiplyQuaternions(corrected_rotation, rotationQuatZ);
-
-    // Normalize the final quaternion
-    corrected_rotation = HmdQuaternion_Normalize(corrected_rotation);
-
-    out_pose.qRotation = corrected_rotation;
-
-    // Mark the pose as valid
-    out_pose.poseIsValid = true;
-    out_pose.result = vr::TrackingResult_Running_OK;
-
-    return out_pose;
-}
-
 void AmfitrackDriver::ControllerDevice::RegisterButtonPress(uint16_t gpio_state)
 {
+
     bool ButtonPressed = CHECK_BIT(gpio_state, 3);
 
     if (this->handedness_ == Handedness::RIGHT)
     {
+        // // Log right-handed button press actions
+        // log_message = "RegisterButtonPress - Right Handedness: Button Pressed: " + std::to_string(ButtonPressed);
+        // logEveryFifteen(log_message, 13); // Log 13
+
         GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
         GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
 
@@ -216,11 +129,29 @@ void AmfitrackDriver::ControllerDevice::RegisterButtonPress(uint16_t gpio_state)
     }
 }
 
+vr::DriverPose_t AmfitrackDriver::ControllerDevice::ToDriverPose(AmfitrackDriver::VRPose &pose)
+{
+    vr::DriverPose_t out_pose = IVRDevice::MakeDefaultPose();
+
+    out_pose.poseIsValid = pose.PoseCorrect;
+    out_pose.result = vr::ETrackingResult::TrackingResult_Running_OK;
+
+    out_pose.qRotation.w = pose.Orientation.w;
+    out_pose.qRotation.x = pose.Orientation.x;
+    out_pose.qRotation.y = pose.Orientation.y;
+    out_pose.qRotation.z = pose.Orientation.z;
+
+    out_pose.vecPosition[0] = pose.Position.v[0];
+    out_pose.vecPosition[1] = pose.Position.v[1];
+    out_pose.vecPosition[2] = pose.Position.v[2];
+
+    return out_pose;
+}
+
 void AmfitrackDriver::ControllerDevice::Update()
 {
     int configValue = 1;
 
-    GetDriver()->Log("[INFO] ControllerDevice::Update: Begin update cycle with configValue = " + std::to_string(configValue));
     if (configValue == 0)
     {
         if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
@@ -271,46 +202,42 @@ void AmfitrackDriver::ControllerDevice::Update()
         AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
         uint16_t gpio_state = sensorMeasurement.gpio_state;
 
-        bool ButtonPressed = CHECK_BIT(gpio_state, 3);
-
-        if (this->handedness_ == Handedness::RIGHT)
-        {
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
-        }
-        else if (this->handedness_ == Handedness::LEFT)
-        {
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_click_component_, ButtonPressed, 0);
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed, 0);
-        }
+        this->RegisterButtonPress(gpio_state);
 
         GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
         this->last_pose_ = pose;
     }
     else if (configValue == 1)
     {
-        auto pose = IVRDevice::MakeDefaultPose();
+        AmfitrackDriver::VRPose pose;
 
-        // --- Compute steamVR_source_position as before ---
+        // --- Gather poses from SteamVR ---
         vr::TrackedDevicePose_t tracked_poses[vr::k_unMaxTrackedDeviceCount];
         vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, tracked_poses, vr::k_unMaxTrackedDeviceCount);
 
-        vr::TrackedDevicePose_t tracker_pose = tracked_poses[16];
-        AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
+        // We assume the generic tracker is at index 16
+        VRPose tracker_pose = {tracked_poses[16].mDeviceToAbsoluteTracking.m[0][3], tracked_poses[16].mDeviceToAbsoluteTracking.m[1][3], tracked_poses[16].mDeviceToAbsoluteTracking.m[2][3]};
 
+        // Acquire the Amfitrack singleton and fetch the generic tracker pose
+        AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
         lib_AmfiProt_Amfitrack_Pose_t generic_tracker_pose{};
         AMFITRACK.getDevicePose(4, &generic_tracker_pose);
+        VRPose generic_hmd_tracker = {generic_tracker_pose.position_x_in_m, generic_tracker_pose.position_y_in_m, generic_tracker_pose.position_z_in_m};
 
-        vr::HmdVector3_t source_position = GetSourcePose(generic_tracker_pose, tracker_pose);
+        // --- Compute the source_position using GetSourcePose ---
+        VRPose source_position = PoseHelper::GetSourcePose(generic_hmd_tracker, tracker_pose);
 
-        // --- Fetch this controller’s Amfitrack pose ---
-        lib_AmfiProt_Amfitrack_Pose_t controller_pose{};
-        AMFITRACK.getDevicePose(this->deviceID_, &controller_pose);
+        // --- Fetch this controller’s Amfitrack pose for calculating final pose ---
+        lib_AmfiProt_Amfitrack_Pose_t amfitrack_controller_pose{};
+        AMFITRACK.getDevicePose(this->deviceID_, &amfitrack_controller_pose);
+        VRPose controller_pose = {amfitrack_controller_pose.position_x_in_m, amfitrack_controller_pose.position_y_in_m, amfitrack_controller_pose.position_z_in_m};
 
         // --- Calculate the controller's pose in SteamVR space ---
-        pose = CalculateControllerPose(source_position, controller_pose);
+        pose = PoseHelper::CalculateControllerPose(source_position, controller_pose);
 
-        // Button handling (unchanged)
+        vr::DriverPose_t out_pose = ToDriverPose(pose);
+
+        // --- Button handling ---
         lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
         AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
         uint16_t gpio_state = sensorMeasurement.gpio_state;
@@ -318,8 +245,8 @@ void AmfitrackDriver::ControllerDevice::Update()
         this->RegisterButtonPress(gpio_state);
 
         // Update in SteamVR
-        GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-        this->last_pose_ = pose;
+        GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, out_pose, sizeof(vr::DriverPose_t));
+        this->last_pose_ = out_pose;
     }
 }
 

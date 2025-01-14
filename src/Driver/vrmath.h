@@ -159,67 +159,6 @@ static vr::HmdVector3_t HmdVector3_From34Matrix( const vr::HmdMatrix34_t &matrix
 	return { matrix.m[ 0 ][ 3 ], matrix.m[ 1 ][ 3 ], matrix.m[ 2 ][ 3 ] };
 }
 
-inline vr::DriverPose_t GetSourcePose(lib_AmfiProt_Amfitrack_Pose_t tracker_raw_pose)
-{
-    vr::DriverPose_t driverPose = { 0 }; // Initialize DriverPose with default values
-
-    // Get the current HMD pose (position and orientation)
-    vr::TrackedDevicePose_t hmd_pose{};
-    vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1); // Fetch HMD pose
-
-    // Check if the HMD pose is valid
-    if (hmd_pose.eTrackingResult != vr::TrackingResult_Running_OK) {
-        driverPose.poseIsValid = false; // HMD pose is invalid
-        return driverPose;
-    }
-
-    // Extract the position and orientation of the HMD
-    vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(hmd_pose.mDeviceToAbsoluteTracking);  // Get HMD position
-    vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);  // Get HMD orientation
-
-    // Tracker's local position (0,0,0) for source
-    vr::HmdVector3_t tracker_position_source = {
-        tracker_raw_pose.position_x_in_m,
-        tracker_raw_pose.position_y_in_m,
-        tracker_raw_pose.position_z_in_m
-    };
-
-    // Define the fixed offset for the source relative to the HMD
-    vr::HmdVector3_t offset_position = { 0.05f, 0.12f, 0.0f }; // 5 cm forward, 12 cm above
-
-    // Rotate the offset by the HMD's orientation
-    vr::HmdVector3_t rotated_offset = RotateVectorByQuaternion(offset_position, hmd_orientation);
-
-    // Calculate the source's absolute position in SteamVR space
-    vr::HmdVector3_t source_position_steamvr;
-    source_position_steamvr.v[0] = hmd_position.v[0] + rotated_offset.v[0]; // Adding rotated offset to HMD position
-    source_position_steamvr.v[1] = hmd_position.v[1] + rotated_offset.v[1];
-    source_position_steamvr.v[2] = hmd_position.v[2] + rotated_offset.v[2];
-
-    // Populate DriverPose with the calculated source position
-    driverPose.vecPosition[0] = source_position_steamvr.v[0]; // Final position in SteamVR coordinates
-    driverPose.vecPosition[1] = source_position_steamvr.v[1];
-    driverPose.vecPosition[2] = source_position_steamvr.v[2];
-
-    // Set the orientation of the source to match the HMD for now
-    driverPose.qRotation = hmd_orientation;
-
-    // Set additional properties (velocity, angular velocity, etc.) to zero for now
-    driverPose.vecVelocity[0] = 0.0;
-    driverPose.vecVelocity[1] = 0.0;
-    driverPose.vecVelocity[2] = 0.0;
-    driverPose.vecAngularVelocity[0] = 0.0;
-    driverPose.vecAngularVelocity[1] = 0.0;
-    driverPose.vecAngularVelocity[2] = 0.0;
-
-    driverPose.poseIsValid = true;
-    driverPose.result = vr::TrackingResult_Running_OK;
-    driverPose.deviceIsConnected = true;
-
-    return driverPose; // Return the complete pose (position and orientation) in SteamVR coordinates
-}
-
-
 static vr::HmdVector3_t operator+( const vr::HmdMatrix34_t &matrix, const vr::HmdVector3_t &vec )
 {
 	vr::HmdVector3_t vector{};

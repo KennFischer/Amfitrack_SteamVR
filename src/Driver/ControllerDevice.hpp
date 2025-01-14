@@ -2,12 +2,14 @@
 
 #include <chrono>
 #include <cmath>
-
+#include <map>
 #include <linalg.h>
 
 #include <Driver/IVRDevice.hpp>
 #include <Native/DriverFactory.hpp>
 #include <openvr_driver.h>
+#include "amfitrack_cpp_SDK/Amfitrack.hpp"
+#include "PoseHelper.hpp"
 
 namespace AmfitrackDriver
 {
@@ -37,6 +39,7 @@ namespace AmfitrackDriver
         virtual void *GetComponent(const char *pchComponentNameAndVersion) override;
         virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize) override;
         virtual vr::DriverPose_t GetPose() override;
+        void RegisterButtonPress(uint16_t gpio_state);
 
     private:
         vr::TrackedDeviceIndex_t device_index_ = vr::k_unTrackedDeviceIndexInvalid;
@@ -81,6 +84,6 @@ namespace AmfitrackDriver
         // vr::VRInputComponentHandle_t skeleton_left_component_ = 0;
         // vr::VRInputComponentHandle_t skeleton_right_component_ = 0;
         vr::PropertyContainerHandle_t props_;
-        void RegisterButtonPress(uint16_t gpio_state);
+        static vr::DriverPose_t ToDriverPose(VRPose &pose);
     };
 };

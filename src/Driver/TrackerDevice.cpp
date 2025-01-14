@@ -88,49 +88,13 @@ void AmfitrackDriver::TrackerDevice::Update()
         pose.poseIsValid = false;
         GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
 
-        // Log invalid state
-        std::string log_message = "TrackerDevice::Update - Device ID: " + std::to_string(this->device_index_) +
-                                  ", Serial: " + this->GetSerial() +
-                                  ", Pose is invalid.";
-        GetDriver()->Log(log_message);
+        // // Log invalid state
+        // std::string log_message = "TrackerDevice::Update - Device ID: " + std::to_string(this->device_index_) +
+        //                           ", Serial: " + this->GetSerial() +
+        //                           ", Pose is invalid.";
+        // GetDriver()->Log(log_message);
     }
 }
-
-// void AmfitrackDriver::TrackerDevice::Update()
-// {
-//     // Check if the device is valid
-//     if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
-//         return;
-
-//     // Get the HMD's pose in SteamVR (assuming it's the reference point)
-//     vr::TrackedDevicePose_t hmd_pose{};
-//     vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1); // Fetch the HMD pose
-//     vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(hmd_pose.mDeviceToAbsoluteTracking);
-//     vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
-
-//     // Create a default pose for the tracker
-//     auto pose = IVRDevice::MakeDefaultPose();
-
-//     // Define the offset between the HMD and the tracker (5 cm in front and 12 cm above in meters)
-//     vr::HmdVector3_t offset_position = { 0.05f, 0.12f, 0.0f };  // X = 5 cm forward, Y = 12 cm above, Z = 0
-//     // Rotate the offset by the HMD's orientation (so the offset is always relative to HMD orientation)
-//     vr::HmdVector3_t rotated_offset = RotateVectorByQuaternion(offset_position, hmd_orientation);
-
-//     // Calculate the tracker's position in SteamVR space by adding the rotated offset to the HMD position
-//     pose.vecPosition[0] = hmd_position.v[0] + rotated_offset.v[0];
-//     pose.vecPosition[1] = hmd_position.v[1] + rotated_offset.v[1];
-//     pose.vecPosition[2] = hmd_position.v[2] + rotated_offset.v[2];
-
-//     // Set the tracker's rotation to match the HMD's rotation (since it's attached and aligned with the HMD)
-//     pose.qRotation = hmd_orientation;
-
-//     // Mark the pose as valid and update in SteamVR
-//     pose.poseIsValid = true;
-//     pose.result = vr::TrackingResult_Running_OK;
-//     GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-
-//     this->last_pose_ = pose;
-// }
 
 DeviceType AmfitrackDriver::TrackerDevice::GetDeviceType()
 {
