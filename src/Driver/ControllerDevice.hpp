@@ -2,7 +2,7 @@
 
 #include <chrono>
 #include <cmath>
-#include <map>
+
 #include <linalg.h>
 
 #include <Driver/IVRDevice.hpp>
@@ -84,6 +84,6 @@ namespace AmfitrackDriver
         // vr::VRInputComponentHandle_t skeleton_left_component_ = 0;
         // vr::VRInputComponentHandle_t skeleton_right_component_ = 0;
         vr::PropertyContainerHandle_t props_;
-        static vr::DriverPose_t ToDriverPose(VRPose &pose);
+        static vr::DriverPose_t ToDriverPose(AmfitrackDriver::VRPose &pose);
     };
 };
