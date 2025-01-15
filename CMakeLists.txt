@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.8)
 enable_testing()
 
 # Globally defines WINDOWS_IGNORE_PACKING_MISMATCH for all targets
-add_compile_definitions(WINDOWS_IGNORE_PACKING_MISMATCH)
+# add_compile_definitions(WINDOWS_IGNORE_PACKING_MISMATCH)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)

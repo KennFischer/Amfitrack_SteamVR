@@ -111,20 +111,20 @@ TEST(GetSourcePoseTest, ScenarioA)
 {
     // 2) Create mock inputs
     AmfitrackDriver::VRPose generic_pose;
-    generic_pose.Position.v[0] = -0.039050f;
-    generic_pose.Position.v[1] = 0.493840f;
-    generic_pose.Position.v[2] = 0.737350f;
+    generic_pose.Position.v[0] = -0.222820f;
+    generic_pose.Position.v[1] = 0.774140f;
+    generic_pose.Position.v[2] = 0.950350f;
 
     // 3) Create a mock tracker pose in SteamVR.
     AmfitrackDriver::VRPose tracker_pose_in_steamvr;
 
-    tracker_pose_in_steamvr.Position.v[0] = 0.110180f;  // X
-    tracker_pose_in_steamvr.Position.v[1] = 0.838261f;  // Y
-    tracker_pose_in_steamvr.Position.v[2] = -0.351854f; // Z
+    tracker_pose_in_steamvr.Position.v[0] = 0.125000f;  // X
+    tracker_pose_in_steamvr.Position.v[1] = 0.899440f;  // Y
+    tracker_pose_in_steamvr.Position.v[2] = -0.475175f; // Z
 
     AmfitrackDriver::VRPose result = poseHelper.GetSourcePose(generic_pose, tracker_pose_in_steamvr);
 
-    AmfitrackDriver::HmdVector3_t expected = {0.149230f, 1.332101f, 0.385496f};
+    AmfitrackDriver::HmdVector3_t expected = {0.347820f, 1.673580f, 0.475175f};
 
     // 6) Assert
     EXPECT_NEAR(result.Position.v[0], expected.v[0], 0.0001f);

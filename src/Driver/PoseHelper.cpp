@@ -33,22 +33,22 @@ AmfitrackDriver::HmdQuaternion_t AmfitrackDriver::PoseHelper::MultiplyQuaternion
 AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::GetSourcePose(VRPose &generic_tracker_pose, VRPose &tracker_pose_in_steamvr)
 {
     // Convert generic tracker position from Amfitrack to SteamVR space (flip Y, Z)
-    HmdVector3_t amfitrack_tracker_position{};
+    AmfitrackDriver::HmdVector3_t amfitrack_tracker_position{};
     amfitrack_tracker_position.v[0] = generic_tracker_pose.Position.v[0];
     amfitrack_tracker_position.v[1] = -generic_tracker_pose.Position.v[1]; // Flip Y
-    amfitrack_tracker_position.v[2] = -generic_tracker_pose.Position.v[2];  // Flip Z
+    amfitrack_tracker_position.v[2] = -generic_tracker_pose.Position.v[2]; // Flip Z
 
     // Invert the Amfitrack tracker position
-    HmdVector3_t inverse_amfitrack_tracker_position{};
+    AmfitrackDriver::HmdVector3_t inverse_amfitrack_tracker_position{};
     inverse_amfitrack_tracker_position.v[0] = -amfitrack_tracker_position.v[0];
     inverse_amfitrack_tracker_position.v[1] = -amfitrack_tracker_position.v[1];
     inverse_amfitrack_tracker_position.v[2] = -amfitrack_tracker_position.v[2];
 
     // Get the tracker's position in SteamVR
-    HmdVector3_t tracker_position = tracker_pose_in_steamvr.Position;
+    AmfitrackDriver::HmdVector3_t tracker_position = tracker_pose_in_steamvr.Position;
 
     // Compute the source position in SteamVR space
-    VRPose steamVR_source_position;
+    AmfitrackDriver::VRPose steamVR_source_position = {};
     steamVR_source_position.Position.v[0] = tracker_position.v[0] + inverse_amfitrack_tracker_position.v[0];
     steamVR_source_position.Position.v[1] = tracker_position.v[1] + inverse_amfitrack_tracker_position.v[1];
     steamVR_source_position.Position.v[2] = tracker_position.v[2] + inverse_amfitrack_tracker_position.v[2];
@@ -62,9 +62,8 @@ AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::CalculateControllerPose(VRP
     // Convert the controller's Amfitrack position to SteamVR coordinates (flip Y, Z)
     HmdVector3_t amfitrack_controller_position{};
     amfitrack_controller_position.v[0] = controller_pose.Position.v[0];
-    amfitrack_controller_position.v[1] = -controller_pose.Position.v[1];  // Flip Y-axis
+    amfitrack_controller_position.v[1] = -controller_pose.Position.v[1]; // Flip Y-axis
     amfitrack_controller_position.v[2] = -controller_pose.Position.v[2]; // Flip Z-axis
-    
 
     // Compute the controller's position in SteamVR space
     HmdVector3_t controller_position_in_vr_space{};
