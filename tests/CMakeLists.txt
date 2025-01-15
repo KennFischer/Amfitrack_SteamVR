@@ -39,3 +39,10 @@ add_test(
     NAME ${This}
     COMMAND ${This}
 )
+
+add_custom_command(
+    TARGET ${This}
+    POST_BUILD
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<CONFIG>
+    COMMENT "Automatically running tests right after building ${This}."
+)
