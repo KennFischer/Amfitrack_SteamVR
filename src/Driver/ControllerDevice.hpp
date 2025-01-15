@@ -40,11 +40,6 @@ namespace AmfitrackDriver
         virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize) override;
         virtual vr::DriverPose_t GetPose() override;
         void RegisterButtonPress(uint16_t gpio_state);
-        // Flags and last log times for each log message (up to 14)
-        bool log_flags[14] = {false};
-        std::chrono::steady_clock::time_point last_log_times[14]; // Log each message every 15 seconds
-        void logEveryFifteen(const std::string &message, int log_number);
-        void resetLogFlags();
 
     private:
         vr::TrackedDeviceIndex_t device_index_ = vr::k_unTrackedDeviceIndexInvalid;

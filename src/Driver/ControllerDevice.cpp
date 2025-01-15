@@ -13,10 +13,6 @@ AmfitrackDriver::ControllerDevice::ControllerDevice(uint8_t deviceId, std::strin
                                                                                                                                      serial_(serial),
                                                                                                                                      handedness_(handedness)
 {
-    for (int i = 0; i < 14; ++i)
-    {
-        last_log_times[i] = std::chrono::steady_clock::now(); // Initialize all log times
-    }
 }
 
 std::string AmfitrackDriver::ControllerDevice::GetSerial()
@@ -134,49 +130,12 @@ void AmfitrackDriver::ControllerDevice::RegisterButtonPress(uint16_t gpio_state)
         GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed, 0);
     }
 }
-void AmfitrackDriver::ControllerDevice::resetLogFlags()
-{
-    // Reset all log flags after 15 seconds, so logs can be triggered again
-    for (int i = 0; i < 14; ++i)
-    {
-        if (std::chrono::steady_clock::now() - last_log_times[i] >= std::chrono::seconds(15))
-        {
-            log_flags[i] = false; // Only reset the flag if 15 seconds have passed for the respective log entry
-        }
-    }
-}
-
-void AmfitrackDriver::ControllerDevice::logEveryFifteen(const std::string &message, int log_number)
-{
-    auto current_time = std::chrono::steady_clock::now();
-    std::chrono::duration<double> elapsed_seconds = current_time - last_log_times[log_number - 1];
-
-    // If 15 seconds have passed since the last log for this entry
-    if (elapsed_seconds.count() >= 15.0)
-    {
-        // Log the message if the corresponding flag is false
-        if (!log_flags[log_number - 1])
-        {
-            GetDriver()->Log(message);        // Log the message
-            log_flags[log_number - 1] = true; // Set the flag to true for this log entry
-        }
-
-        // After 15 seconds, reset the timer and flags for that entry
-        last_log_times[log_number - 1] = current_time;
-        resetLogFlags(); // Reset flags after every cycle
-    }
-}
 
 vr::DriverPose_t AmfitrackDriver::ControllerDevice::ToDriverPose(AmfitrackDriver::VRPose &pose)
 {
     vr::DriverPose_t out_pose = IVRDevice::MakeDefaultPose();
 
-    // std::string log_message = "ToDriverPoseInput: " + std::to_string(pose.Position.v[0]) + ", " + std::to_string(pose.Position.v[1]) + ", " + std::to_string(pose.Position.v[2]);
-    // logEveryFifteen(log_message, 1); // Log 1
     out_pose.poseIsValid = true;
-    // Log final pose
-    // log_message = "ToDriverPose - OutPose is valid: (" + std::to_string(out_pose.poseIsValid);
-    // logEveryFifteen(log_message, 2); // Log 2
 
     out_pose.result = vr::ETrackingResult::TrackingResult_Running_OK;
 
@@ -184,17 +143,11 @@ vr::DriverPose_t AmfitrackDriver::ControllerDevice::ToDriverPose(AmfitrackDriver
     out_pose.qRotation.x = pose.Orientation.x;
     out_pose.qRotation.y = pose.Orientation.y;
     out_pose.qRotation.z = pose.Orientation.z;
-    // log_message = "ToDriverPose Orientation Input: " + std::to_string(pose.Orientation.w) + ", " + std::to_string(pose.Orientation.x) + ", " + std::to_string(pose.Orientation.y) + ", " + std::to_string(pose.Orientation.z);
-    // logEveryFifteen(log_message, 3); // Log 3
 
     out_pose.vecPosition[0] = pose.Position.v[0];
     out_pose.vecPosition[1] = pose.Position.v[1];
     out_pose.vecPosition[2] = pose.Position.v[2];
-    // log_message = "ToDriverPose Position Input: " + std::to_string(pose.Position.v[0]) + ", " + std::to_string(pose.Position.v[1]) + ", " + std::to_string(pose.Position.v[2]);
-    // logEveryFifteen(log_message, 4); // Log 4
-    // log_message = "ToDriverPose - OutPose Position: (" + std::to_string(out_pose.vecPosition[0]) + ", " + std::to_string(out_pose.vecPosition[1]) + ", " + std::to_string(out_pose.vecPosition[2]);
-    // logEveryFifteen(log_message, 5); // Log 5
-    // log_message = "ToDriverPose - OutPose Orientation: (" + std::to_string(out_pose.qRotation.w) + ", " + std::to_string(out_pose.qRotation.x) + ", " + std::to_string(out_pose.qRotation.y) + ", " + std::to_string(out_pose.qRotation.z);
+    
     return out_pose;
 }
 
@@ -269,19 +222,10 @@ void AmfitrackDriver::ControllerDevice::Update()
         // We assume the generic tracker is at index 16
         AmfitrackDriver::VRPose steamVR_tracker_pose{};
 
-        std::string log_message = "sizeof(VRPose) = " + std::to_string(sizeof(AmfitrackDriver::VRPose));
-        logEveryFifteen(log_message, 6);
-
         vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(tracked_poses[16].mDeviceToAbsoluteTracking);
         steamVR_tracker_pose.Position.v[0] = hmd_position.v[0];
         steamVR_tracker_pose.Position.v[1] = hmd_position.v[1];
         steamVR_tracker_pose.Position.v[2] = hmd_position.v[2];
-
-        log_message = "Update - steamVR_tracker_pose: " 
-        + std::to_string(steamVR_tracker_pose.Position.v[0]) + ", " 
-        + std::to_string(steamVR_tracker_pose.Position.v[1]) + ", " 
-        + std::to_string(steamVR_tracker_pose.Position.v[2]);
-        logEveryFifteen(log_message, 7); // Log 6
 
         // Acquire the Amfitrack singleton and fetch the generic tracker pose
         AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
@@ -293,30 +237,12 @@ void AmfitrackDriver::ControllerDevice::Update()
         generic_hmd_tracker.Position.v[1] = generic_tracker_pose.position_y_in_m;
         generic_hmd_tracker.Position.v[2] = generic_tracker_pose.position_z_in_m;
 
-        log_message = "Update - generic_tracker_pose AmfitrackPosition: (" +
-                      std::to_string(generic_hmd_tracker.Position.v[0]) + ", " +
-                      std::to_string(generic_hmd_tracker.Position.v[1]) + ", " +
-                      std::to_string(generic_hmd_tracker.Position.v[2]) + ")";
-        logEveryFifteen(log_message, 8); // Log 8
-
         // --- Compute the source_position using GetSourcePose ---
         AmfitrackDriver::VRPose source_position = poseHelper.GetSourcePose(generic_hmd_tracker, steamVR_tracker_pose);
-
-        log_message = "Update - GetSourcePose calculated Source Position: (" +
-                      std::to_string(source_position.Position.v[0]) + ", " +
-                      std::to_string(source_position.Position.v[1]) + ", " +
-                      std::to_string(source_position.Position.v[2]) + ")";
-        logEveryFifteen(log_message, 9); // Log 9
 
         // --- Fetch this controller’s Amfitrack pose for calculating final pose ---
         lib_AmfiProt_Amfitrack_Pose_t amfitrack_controller_pose{};
         AMFITRACK.getDevicePose(this->deviceID_, &amfitrack_controller_pose);
-
-        // log_message = "CalculateControllerPose - Amfitrack Controller Position: (" +
-        //               std::to_string(amfitrack_controller_pose.position_x_in_m) + ", " +
-        //               std::to_string(amfitrack_controller_pose.position_y_in_m) + ", " +
-        //               std::to_string(amfitrack_controller_pose.position_z_in_m) + ")";
-        // logEveryFifteen(log_message, 9); // Log 10
 
         AmfitrackDriver::VRPose controller_pose{};
         controller_pose.Orientation = {
@@ -330,26 +256,10 @@ void AmfitrackDriver::ControllerDevice::Update()
             amfitrack_controller_pose.position_y_in_m,
             amfitrack_controller_pose.position_z_in_m};
 
-        // log_message = "CalculateControllerPose - Amfitrack Controller Orientation: (" +
-        //               std::to_string(controller_pose.Orientation.w) + ", " +
-        //               std::to_string(controller_pose.Orientation.x) + ", " +
-        //               std::to_string(controller_pose.Orientation.y) + ", " +
-        //               std::to_string(controller_pose.Orientation.z) + ")";
-        // logEveryFifteen(log_message, 10); // Log 11
-
         // --- Calculate the controller's pose in SteamVR space ---
         pose = poseHelper.CalculateControllerPose(source_position, controller_pose);
 
-        // log_message = "CalculateControllerPose - Controller in SteamVR Pose: (" +
-        //               std::to_string(pose.Position.v[0]) + ", " +
-        //               std::to_string(pose.Position.v[1]) + ", " +
-        //               std::to_string(pose.Position.v[2]) + ")";
-        // logEveryFifteen(log_message, 12); // Log 13
-
         vr::DriverPose_t out_pose = ToDriverPose(pose);
-
-        // log_message = "Update - Controller: " + std::to_string(out_pose.vecPosition[0]) + ", " + std::to_string(out_pose.vecPosition[1]) + ", " + std::to_string(out_pose.vecPosition[2]);
-        // logEveryFifteen(log_message, 13); // Log 14
 
         // --- Button handling ---
         lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
