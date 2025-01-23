@@ -23,7 +23,7 @@ vr::EVRInitError AmfitrackDriver::VRDriver::Init(vr::IVRDriverContext* pDriverCo
     Log("Amfitrack started"); // Log Amfitrack started message
 
     // Add a HMD
-    // this->AddDevice(std::make_shared<HMDDevice>("Example_HMDDevice"));
+    this->AddDevice(std::make_shared<TrackerDevice>(4, "Amfitrack_HMDTrackedDevice"));
 
     // Add a couple controllers
     this->AddDevice(std::make_shared<ControllerDevice>(2, "Amfitrack_Controller_Left", ControllerDevice::Handedness::LEFT));

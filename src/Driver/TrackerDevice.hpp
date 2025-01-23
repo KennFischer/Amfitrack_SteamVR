@@ -10,27 +10,29 @@
 
 namespace AmfitrackDriver {
     class TrackerDevice : public IVRDevice {
-        public:
+    public:
+        TrackerDevice(uint8_t deviceId, std::string serial);
+        ~TrackerDevice() = default;
 
-            TrackerDevice(std::string serial);
-            ~TrackerDevice() = default;
+        // Inherited via IVRDevice
+        virtual std::string GetSerial() override;
+        virtual void Update() override;
+        virtual vr::TrackedDeviceIndex_t GetDeviceIndex() override;
+        virtual DeviceType GetDeviceType() override;
 
-            // Inherited via IVRDevice
-            virtual std::string GetSerial() override;
-            virtual void Update() override;
-            virtual vr::TrackedDeviceIndex_t GetDeviceIndex() override;
-            virtual DeviceType GetDeviceType() override;
+        virtual vr::EVRInitError Activate(uint32_t unObjectId) override;
+        virtual void Deactivate() override;
+        virtual void EnterStandby() override;
+        virtual void* GetComponent(const char* pchComponentNameAndVersion) override;
+        virtual void DebugRequest(const char* pchRequest, char* pchResponseBuffer, uint32_t unResponseBufferSize) override;
+        virtual vr::DriverPose_t GetPose() override;
 
-            virtual vr::EVRInitError Activate(uint32_t unObjectId) override;
-            virtual void Deactivate() override;
-            virtual void EnterStandby() override;
-            virtual void* GetComponent(const char* pchComponentNameAndVersion) override;
-            virtual void DebugRequest(const char* pchRequest, char* pchResponseBuffer, uint32_t unResponseBufferSize) override;
-            virtual vr::DriverPose_t GetPose() override;
+        vr::DriverPose_t GetLastPose() const { return last_pose_; } 
 
     private:
         vr::TrackedDeviceIndex_t device_index_ = vr::k_unTrackedDeviceIndexInvalid;
         std::string serial_;
+        uint8_t deviceID_;
 
         vr::DriverPose_t last_pose_ = IVRDevice::MakeDefaultPose();
 

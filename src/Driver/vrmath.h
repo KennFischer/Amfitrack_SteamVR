@@ -39,6 +39,39 @@ vr::HmdQuaternion_t HmdQuaternion_FromMatrix( const T &matrix )
 	return q;
 }
 
+// Utility function for quaternion multiplication
+inline vr::HmdQuaternion_t MultiplyQuaternions(const vr::HmdQuaternion_t &q1, const vr::HmdQuaternion_t &q2)
+{
+    vr::HmdQuaternion_t result;
+    result.w = q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z;
+    result.x = q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y;
+    result.y = q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x;
+    result.z = q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w;
+    return result;
+}
+
+// Utility function for vector addition
+inline vr::HmdVector3_t AddVectors(const vr::HmdVector3_t &v1, const vr::HmdVector3_t &v2)
+{
+    vr::HmdVector3_t result;
+    result.v[0] = v1.v[0] + v2.v[0];
+    result.v[1] = v1.v[1] + v2.v[1];
+    result.v[2] = v1.v[2] + v2.v[2];
+    return result;
+}
+
+// Utility function to rotate a vector by a quaternion
+inline vr::HmdVector3_t RotateVectorByQuaternion(const vr::HmdVector3_t &vec, const vr::HmdQuaternion_t &quat)
+{
+    vr::HmdQuaternion_t vecQuat = {0, vec.v[0], vec.v[1], vec.v[2]};
+    vr::HmdQuaternion_t quatConjugate = {quat.w, -quat.x, -quat.y, -quat.z};
+
+    vr::HmdQuaternion_t resultQuat = MultiplyQuaternions(MultiplyQuaternions(quat, vecQuat), quatConjugate);
+
+    vr::HmdVector3_t result = {resultQuat.x, resultQuat.y, resultQuat.z};
+    return result;
+}
+
 static vr::HmdQuaternion_t HmdQuaternion_FromSwingTwist( const vr::HmdVector2_t &swing, const float twist )
 {
 	vr::HmdQuaternion_t result{};
@@ -80,34 +113,21 @@ static vr::HmdQuaternion_t HmdQuaternion_FromSwingTwist( const vr::HmdVector2_t 
 	return result;
 }
 
-static vr::HmdQuaternion_t HmdQuaternion_Normalize( const vr::HmdQuaternion_t &q )
+static vr::HmdQuaternion_t HmdQuaternion_Normalize(const vr::HmdQuaternion_t &q)
 {
-	vr::HmdQuaternion_t result{};
-	double n = sqrt( q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w );
+    vr::HmdQuaternion_t result{};
+    double n = sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
 
-	result.w = q.w / n;
-	result.x = q.x / n;
-	result.y = q.y / n;
-	result.z = q.z / n;
+    if (n == 0.0) {
+        return result;  // Return the default zero quaternion if magnitude is zero
+    }
 
-	return result;
-}
+    result.w = q.w / n;
+    result.x = q.x / n;
+    result.y = q.y / n;
+    result.z = q.z / n;
 
-static vr::HmdQuaternion_t HmdQuaternion_FromEulerAngles(double roll, double pitch, double yaw) {
-  double cr = cos(roll * 0.5);
-  double sr = sin(roll * 0.5);
-  double cp = cos(pitch * 0.5);
-  double sp = sin(pitch * 0.5);
-  double cy = cos(yaw * 0.5);
-  double sy = sin(yaw * 0.5);
-
-  vr::HmdQuaternion_t q;
-  q.w = cr * cp * cy + sr * sp * sy;
-  q.x = cr * sp * cy + sr * cp * sy;
-  q.y = cr * cp * sy - sr * sp * cy;
-  q.z = sr * cp * cy - cr * sp * sy;
-
-  return q;
+    return result;
 }
 
 template < class T, class Q >
@@ -138,7 +158,6 @@ static vr::HmdVector3_t HmdVector3_From34Matrix( const vr::HmdMatrix34_t &matrix
 {
 	return { matrix.m[ 0 ][ 3 ], matrix.m[ 1 ][ 3 ], matrix.m[ 2 ][ 3 ] };
 }
-
 
 static vr::HmdVector3_t operator+( const vr::HmdMatrix34_t &matrix, const vr::HmdVector3_t &vec )
 {
