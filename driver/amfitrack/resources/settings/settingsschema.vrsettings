@@ -1,0 +1,33 @@
+[
+    {
+      "title": "Amfitrack",
+      "show_without_hmd": true,
+      "values": [
+        {
+          "name": "/settings/driver_amfitrack/isUnity",
+          "control": "toggle",
+          "label": "Enable Unity based (m->mm)",
+          "on_label": "Enabled",
+          "off_label": "Disabled",
+          "requires": {}
+        },
+        {
+          "name": "/settings/driver_amfitrack/isUnrealEngine",
+          "control": "toggle",
+          "label": "Enable Unreal engine based (m->cm)",
+          "on_label": "Enabled",
+          "off_label": "Disabled",
+          "requires": {}
+        },
+        {
+          "name": "/settings/driver_amfitrack/sourceMounting",
+          "control": "slider",
+          "label": "Source mounting: 0==Z-up | 5== on HMD Y up Z forward | 10 == stationary source",
+          "type": "uint",
+          "min": 0,
+          "max": 10,
+          "requires": {}
+        }
+      ]
+    }
+]

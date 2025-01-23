@@ -9,6 +9,17 @@
 
 #define CHECK_BIT(var, pos) ((var) & (1 << (pos)))
 
+enum ConfigMode_t
+{
+    SourceUpright = 0,
+    SourceOnHMD = 5,
+    SourceFreeMoving = 10,
+};
+
+static ConfigMode_t configValue = SourceUpright;
+static bool isUnity = false;
+static bool isUnrealEngine = false;
+
 AmfitrackDriver::ControllerDevice::ControllerDevice(uint8_t deviceId, std::string serial, ControllerDevice::Handedness handedness) : deviceID_(deviceId),
                                                                                                                                      serial_(serial),
                                                                                                                                      handedness_(handedness)
@@ -106,9 +117,6 @@ void AmfitrackDriver::ControllerDevice::RegisterButtonPress(uint16_t gpio_state)
 
     if (this->handedness_ == Handedness::RIGHT)
     {
-        // // Log right-handed button press actions
-        // log_message = "RegisterButtonPress - Right Handedness: Button Pressed: " + std::to_string(ButtonPressed);
-        // logEveryFifteen(log_message, 13); // Log 13
 
         GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
         GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
@@ -151,12 +159,68 @@ vr::DriverPose_t AmfitrackDriver::ControllerDevice::ToDriverPose(AmfitrackDriver
     return out_pose;
 }
 
+void ConvertToSteamVRCoordinate(lib_AmfiProt_Amfitrack_Pose_t *input, lib_AmfiProt_Amfitrack_Pose_t *output)
+{
+    output->position_x_in_m = input->position_x_in_m;
+    output->position_y_in_m = input->position_z_in_m;
+    output->position_z_in_m = -input->position_y_in_m;
+
+    output->orientation_x = input->orientation_x;
+    output->orientation_y = input->orientation_z;
+    output->orientation_z = -input->orientation_y;
+    output->orientation_w = input->orientation_w;
+
+    float Multiplier = 1;
+    if (isUnity) Multiplier = 1000;
+    else if (isUnrealEngine) Multiplier = 10;
+
+    output->position_x_in_m *= Multiplier;
+    output->position_y_in_m *= Multiplier;
+    output->position_z_in_m *= Multiplier;
+}
+
+
 void AmfitrackDriver::ControllerDevice::Update()
 {
-    int configValue = 1;
     AmfitrackDriver::PoseHelper poseHelper;
+    isUnity = vr::VRSettings()->GetBool("driver_amfitrack", "isUnity", nullptr);
+    isUnrealEngine = vr::VRSettings()->GetBool("driver_amfitrack", "isUnrealEngine", nullptr);
+    configValue = (ConfigMode_t)vr::VRSettings()->GetInt32("driver_amfitrack", "sourceMounting", nullptr);
 
-    if (configValue == 0)
+    if (configValue == SourceUpright)
+    {
+        if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
+            return;
+
+        auto pose = IVRDevice::MakeDefaultPose();
+
+        AMFITRACK& AMFITRACK = AMFITRACK::getInstance();
+        if (!AMFITRACK.getDeviceActive(this->deviceID_))
+        {
+            pose.poseIsValid = false;
+            return;
+        }
+
+        lib_AmfiProt_Amfitrack_Pose_t position;
+        lib_AmfiProt_Amfitrack_Pose_t updatedPosition;
+        AMFITRACK.getDevicePose(this->deviceID_, &position);
+
+        ConvertToSteamVRCoordinate(&position, &updatedPosition);
+
+        pose.vecPosition[0] = updatedPosition.position_x_in_m;
+        pose.vecPosition[1] = updatedPosition.position_y_in_m;
+        pose.vecPosition[2] = updatedPosition.position_z_in_m;
+
+        pose.qRotation.x = updatedPosition.orientation_x;
+        pose.qRotation.y = updatedPosition.orientation_y;
+        pose.qRotation.z = updatedPosition.orientation_z;
+        pose.qRotation.w = updatedPosition.orientation_w;
+
+        // Update in SteamVR
+        GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+        this->last_pose_ = pose;
+    }
+    else if (configValue == SourceOnHMD)
     {
         if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
             return;
@@ -211,7 +275,7 @@ void AmfitrackDriver::ControllerDevice::Update()
         GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
         this->last_pose_ = pose;
     }
-    else if (configValue == 1)
+    else if (configValue == SourceFreeMoving)
     {
         AmfitrackDriver::VRPose pose;
 

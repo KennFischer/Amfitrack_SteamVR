@@ -30,6 +30,119 @@ AmfitrackDriver::HmdQuaternion_t AmfitrackDriver::PoseHelper::MultiplyQuaternion
     return result;
 }
 
+/*
+    Pseudo code implementation of Orientation agnostic pose calculation for the source and the controller
+ 
+    sensor_hmd:
+    orientation_hmd_sensor_steam = orientation_HMD_steam
+    position_hmd_sensor_steam = position_headset_steam + quaternion_rotation(hmd_offset, orientation_HMD_steam)
+    - This part is already done in the tracker device
+
+    src to HMD coordinate system:
+    orientation_src_(hmd) = inv(orientation_hmd_sensor_amfitrack)
+    position_src_(hmd) = quaternion_rotation(-position_hmd_sensor_amfitrack, orientation_src_(hmd))
+ 
+    src to steam:
+    orientation_src_steam = orientation_src_(hmd) + orientation_hmd_sensor_steam = multiply__quaternions(orientation_src_(hmd), orientation_hmd_sensor_steam)
+    position_src_steam = position_hmd_sensor_steam + quaternion_rotation(position_src_(hmd), orientation_hmd_sensor_steam)
+ 
+    controller to steam:
+    orientation_controller_steam = multiply_quaternions(orientation_controller_amfitrack, orientation_src_steam)
+    position_controller_steam = position_src_steam + quaternion_rotation(position_controller_amfitrack, orientation_src_steam)
+
+
+    This would be preceeded by a call to the SteamVR tracked devices to get the tracker device pose, which is then applied to a 
+    VRPose variable called genericTracker or similar.
+
+    AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::GenericTrackerToSteam(AmfitrackDriver::VRPose genericTrackerPosition){
+        AmfitrackerDriver::VRPose trackerPosition{};
+        trackerPosition.Position.v[0] = genericTrackerPosition.Position.v[0];
+        trackerPosition.Position.v[1] = genericTrackerPosition.Position.v[1];
+        trackerPosition.Position.v[2] = genericTrackerPosition.Position.v[2];
+
+        trackerPosition.Orientation = {
+            genericTrackerPosition.Orientation.w,
+            genericTrackerPosition.Orientation.x,
+            genericTrackerPosition.Orientation.y,
+            genericTrackerPosition.Orientation.z
+        };
+
+        return trackerPosition;
+    };
+
+    AmfitrackDriver::VRPose genericTracker = GenericTrackerToSteam(genericTracker);
+
+    AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::SourceToHMD(AmfitrackDRiver::VRPose genericTracker){
+        AmfitrackDriver::VRPose sourcePosition{};
+        sourcePosition.Orientation = {
+            genericTracker.Orientation.w,
+            -genericTracker.Orientation.x,
+            -genericTracker.Orientation.y,
+            -genericTracker.Orientation.z
+        };
+
+        Retrieve the generic tracker sensor position from Amfitrack and inverse it.
+        AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
+        lib_AmfiProt_Amfitrack_Pose_t generic_tracker_pose{};
+        AMFITRACK.getDevicePose(4, &generic_tracker_pose);
+
+        AmfitrackDriver::HmdVector3_t amfitrack_tracker_position.Position = QuaternionRotation(-generic_tracker_pose.position_x_in_m, -generic_tracker_pose.position_y_in_m, -generic_tracker_pose.position_z_in_m, sourcePosition.Orientation);
+
+        amfitrack_tracker_position.v[0] = generic_tracker_pose.position_x_in_m;
+        amfitrack_tracker_position.v[1] = generic_tracker_pose.position_y_in_m;
+        amfitrack_tracker_position.v[2] = generic_tracker_pose.position_z_in_m;
+
+        sourcePosition.Position.v[0] = -amfitrack_tracker_position.v[0];
+        sourcePosition.Position.v[1] = -amfitrack_tracker_position.v[1];
+        sourcePosition.Position.v[2] = -amfitrack_tracker_position.v[2];
+
+        return sourcePosition;
+    };
+
+    AmfitrackDriver::VRPose sourceInHMD = SourceToHMD(genericTracker);
+
+    AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::getSourcePose(AmfitrackerDriver::VRPose sourceInHMD, AmfitrackDriver::VRPose trackerPoseInSteam){
+        AmfitrackDriver::VRPose sourcePose{};
+
+        sourcePose.Orientation = MultiplyQuaternions(sourceInHMD.Orientation, trackerPoseInSteam.Orientation);
+
+        sourcePose.Position = trackerPoseInSteam.Position + QuaternionRotation(sourceInHMD.Position.v[0], sourceInHMD.Position.v[1], sourceInHMD.Position.v[2], trackerPoseInSteam.Orientation);
+
+        return sourcePose;
+    };
+
+    AmfitrackDriver::VRPose sourcePose = getSourcePose(sourceInHMD, genericTracker);
+
+    AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::CalculateControllerPose(AmfitrackerDriver::VRPose steamVRSourcePose) {
+
+        AmfitrackDriver::VRPose controllerPose{};
+
+        AMFITRACK &AMFITRACK = AMFITRACK::getInstance();
+        lib_AmfiProt_Amfitrack_Pose_t amfitrack_controller_pose{};
+        AMFITRACK.getDevicePose(this->deviceID_, &amfitrack_controller_pose);
+
+        
+        controllerPose.Orientation = MultiplyQuaternions({
+            amfitrack_controller_pose.orientation_x,
+            amfitrack_controller_pose.orientation_y,
+            amfitrack_controller_pose.orientation_z,
+            amfitrack_controller_pose.orientation_w
+        }, steamVRSourcePose.Orientation);
+
+        controllerPose.Position = steamVRSourcePose.Position + QuaternionRotation(amfitrack_controller_pose.position_x_in_m, amfitrack_controller_pose.position_y_in_m, amfitrack_controller_pose.position_z_in_m, steamVRSourcePose.Orientation);
+
+        return controllerPose;
+    };
+
+    AmfitrackDriver::VRPose controllerPose = CalculateControllerPose(sourcePose);
+
+    vr::DriverPose_t out_pose = ToDriverPose(controllerPose);
+
+    GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, out_pose, sizeof(vr::DriverPose_t));
+    this->last_pose_ = out_pose;
+ 
+*/
+
 AmfitrackDriver::VRPose AmfitrackDriver::PoseHelper::GetSourcePose(VRPose &generic_tracker_pose, VRPose &tracker_pose_in_steamvr)
 {
     // Convert generic tracker position from Amfitrack to SteamVR space (flip Y, Z)
