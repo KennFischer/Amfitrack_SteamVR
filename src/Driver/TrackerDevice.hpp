@@ -7,6 +7,9 @@
 
 #include <Driver/IVRDevice.hpp>
 #include <Native/DriverFactory.hpp>
+#include <openvr_driver.h>
+
+#include "PoseHelper.hpp"
 
 namespace AmfitrackDriver {
     class TrackerDevice : public IVRDevice {
@@ -26,6 +29,7 @@ namespace AmfitrackDriver {
         virtual void* GetComponent(const char* pchComponentNameAndVersion) override;
         virtual void DebugRequest(const char* pchRequest, char* pchResponseBuffer, uint32_t unResponseBufferSize) override;
         virtual vr::DriverPose_t GetPose() override;
+        void RegisterButtonPress(uint16_t gpio_state);
 
         vr::DriverPose_t GetLastPose() const { return last_pose_; } 
 
@@ -43,6 +47,8 @@ namespace AmfitrackDriver {
 
         vr::VRInputComponentHandle_t system_click_component_ = 0;
         vr::VRInputComponentHandle_t system_touch_component_ = 0;
+
+        vr::DriverPose_t ToDriverPose(AmfitrackDriver::VRPose &pose);
 
     };
 };

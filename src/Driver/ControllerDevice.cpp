@@ -182,6 +182,7 @@ void ConvertToSteamVRCoordinate(lib_AmfiProt_Amfitrack_Pose_t *input, lib_AmfiPr
 
 void AmfitrackDriver::ControllerDevice::Update()
 {
+    //TODO NOTICE COPIED INTO Tracker
     AmfitrackDriver::PoseHelper poseHelper;
     isUnity = vr::VRSettings()->GetBool("driver_amfitrack", "isUnity", nullptr);
     isUnrealEngine = vr::VRSettings()->GetBool("driver_amfitrack", "isUnrealEngine", nullptr);
@@ -224,6 +225,20 @@ void AmfitrackDriver::ControllerDevice::Update()
     {
         if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
             return;
+
+        if (this->device_index_ == 5)
+        {
+            auto pose = IVRDevice::MakeDefaultPose();
+            pose.vecPosition[0] = 1.0f;
+            pose.vecPosition[1] = 1.0f;
+            pose.vecPosition[2] = 1.0f;
+
+            pose.qRotation = { 1.0f, 0.0f, 0.0f, 0.0f};
+
+            GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+            this->last_pose_ = pose;
+            return;
+        }
 
         vr::TrackedDevicePose_t hmd_pose{};
         vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1);

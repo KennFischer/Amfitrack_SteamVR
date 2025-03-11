@@ -23,16 +23,21 @@ vr::EVRInitError AmfitrackDriver::VRDriver::Init(vr::IVRDriverContext* pDriverCo
     Log("Amfitrack started"); // Log Amfitrack started message
 
     // Add a HMD
-    this->AddDevice(std::make_shared<TrackerDevice>(4, "Amfitrack_HMDTrackedDevice"));
+    //this->AddDevice(std::make_shared<TrackerDevice>(4, "Amfitrack_HMDTrackedDevice"));
 
     // Add a couple controllers
-    this->AddDevice(std::make_shared<ControllerDevice>(2, "Amfitrack_Controller_Left", ControllerDevice::Handedness::LEFT));
-    this->AddDevice(std::make_shared<ControllerDevice>(3, "Amfitrack_Controller_Right", ControllerDevice::Handedness::RIGHT));
+    this->AddDevice(std::make_shared<ControllerDevice>(2, "Amfitrack Controller Left", ControllerDevice::Handedness::LEFT));
+    this->AddDevice(std::make_shared<ControllerDevice>(3, "Amfitrack Controller Right", ControllerDevice::Handedness::RIGHT));
+
+    this->AddDevice(std::make_shared<TrackerDevice>(4, "Amfitrack Generic Tracker #1"));
+    this->AddDevice(std::make_shared<TrackerDevice>(5, "Amfitrack Generic Tracker #2"));
+    this->AddDevice(std::make_shared<TrackerDevice>(6, "Amfitrack Generic Tracker #3"));
+    this->AddDevice(std::make_shared<TrackerDevice>(7, "Amfitrack Generic Tracker #4"));
+    
+    this->AddDevice(std::make_shared<TrackerDevice>(9, "Amfitrack HMD Src Tracker"));
 
     // Add a tracker
-    // this->AddDevice(std::make_shared<TrackerDevice>("Example_TrackerDevice"));
-
-
+     //this->AddDevice(std::make_shared<TrackerDevice>("Example_TrackerDevice"));
 
     Log("AmfitrackDriver Loaded Successfully");
 

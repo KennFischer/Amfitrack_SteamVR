@@ -41,13 +41,15 @@ namespace AmfitrackDriver
         virtual vr::DriverPose_t GetPose() override;
         void RegisterButtonPress(uint16_t gpio_state);
 
+        vr::DriverPose_t GetLastPose() const { return last_pose_; }
+
     private:
         vr::TrackedDeviceIndex_t device_index_ = vr::k_unTrackedDeviceIndexInvalid;
         std::string serial_;
         uint8_t deviceID_;
         Handedness handedness_;
 
-        vr::DriverPose_t last_pose_;
+        vr::DriverPose_t last_pose_ = IVRDevice::MakeDefaultPose();;
 
         bool did_vibrate_ = false;
         float vibrate_anim_state_ = 0.f;
