@@ -78,10 +78,10 @@ namespace AmfitrackDriver
         vr::VRInputComponentHandle_t trackpad_x_component_ = 0;
         vr::VRInputComponentHandle_t trackpad_y_component_ = 0;
 
-        vr::VRInputComponentHandle_t joystick_click_component_ = 0;
-        vr::VRInputComponentHandle_t joystick_touch_component_ = 0;
-        vr::VRInputComponentHandle_t joystick_x_component_ = 0;
-        vr::VRInputComponentHandle_t joystick_y_component_ = 0;
+        vr::VRInputComponentHandle_t thumbstick_click_component_ = 0;
+        vr::VRInputComponentHandle_t thumbstick_touch_component_ = 0;
+        vr::VRInputComponentHandle_t thumbstick_x_component_ = 0;
+        vr::VRInputComponentHandle_t thumbstick_y_component_ = 0;
 
         // vr::VRInputComponentHandle_t skeleton_left_component_ = 0;
         // vr::VRInputComponentHandle_t skeleton_right_component_ = 0;
