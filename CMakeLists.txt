@@ -24,7 +24,7 @@ endif()
 # Enable verbose makefile output for debugging
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-set(COPY_DIRECTLY_TO_STEAM ON)
+set(COPY_DIRECTLY_TO_STEAM OFF)
 
 # Define source files
 set(SOURCES
@@ -113,7 +113,6 @@ add_custom_command(
 add_custom_command(TARGET driver_amfitrack POST_BUILD
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/copy_to_release_folder.cmake"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SOURCE_FILE}" "${DESTINATION_DIR_RELEASE}/driver_amfitrack.dll"
-    #COMMAND ${CMAKE_COMMAND} -E copy_if_different "${HIDAPI_DLL}" "${DESTINATION_DIR_RELEASE}/hidapi.dll"
 )
 
 if(COPY_DIRECTLY_TO_STEAM)
@@ -125,7 +124,6 @@ add_custom_command(
 add_custom_command(TARGET driver_amfitrack POST_BUILD
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/copy_if_different_directory.cmake"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SOURCE_FILE}" "${DESTINATION_DIR}/driver_amfitrack.dll"
-    #COMMAND ${CMAKE_COMMAND} -E copy_if_different "${HIDAPI_DLL}" "${DESTINATION_DIR}/hidapi.dll"
 )
 endif()
 

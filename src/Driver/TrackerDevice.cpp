@@ -9,6 +9,7 @@
 #include "amfitrack_cpp_SDK/Amfitrack.hpp"
 
 #define CHECK_BIT(var, pos) ((var) & (1 << (pos)))
+#define CHECK_ANALOG(var) float((var) >> 4)/powf(2.0,12)
 
 enum ConfigMode_t
 {
@@ -38,19 +39,64 @@ vr::EVRInitError AmfitrackDriver::TrackerDevice::Activate(uint32_t unObjectId)
     GetDriver()->Log("Activating tracker " + this->serial_);
 
     // Get the properties handle
-    auto props = GetDriver()->GetProperties()->TrackedDeviceToPropertyContainer(this->device_index_);
+    this->props_ = GetDriver()->GetProperties()->TrackedDeviceToPropertyContainer(this->device_index_);
 
     // Set some universe ID (Must be 2 or higher)
-    GetDriver()->GetProperties()->SetUint64Property(props, vr::Prop_CurrentUniverseId_Uint64, 2);
+    GetDriver()->GetProperties()->SetUint64Property(this->props_, vr::Prop_CurrentUniverseId_Uint64, 2);
 
     // Set up a model "number" (not needed but good to have)
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_ModelNumber_String, "Amfitrack_tracker");
+    GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_ModelNumber_String, "Amfitrack_tracker");
 
     // Set up a render model path
-    GetDriver()->GetProperties()->SetStringProperty(props, vr::Prop_RenderModelName_String, "vr_controller_vive_1_5");
+    GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_RenderModelName_String, "vr_controller_vive_1_5");
+
+    // Setup inputs and outputs
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/a/click", &this->a_button_click_component_);
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/a/touch", &this->a_button_touch_component_);
+
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/b/click", &this->b_button_click_component_);
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/b/touch", &this->b_button_touch_component_);
+
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/trigger/click", &this->trigger_click_component_);
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/trigger/touch", &this->trigger_touch_component_);
+    GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/trigger/value", &this->trigger_value_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedOneSided);
+
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/grip/touch", &this->grip_touch_component_);
+    GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/grip/value", &this->grip_value_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedOneSided);
+    GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/grip/force", &this->grip_force_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedOneSided);
+
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/system/click", &this->system_click_component_);
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/system/touch", &this->system_touch_component_);
+
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/trackpad/click", &this->trackpad_click_component_);
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/trackpad/touch", &this->trackpad_touch_component_);
+    GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/trackpad/x", &this->trackpad_x_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedTwoSided);
+    GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/trackpad/y", &this->trackpad_y_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedTwoSided);
+
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/thumbstick/click", &this->thumbstick_click_component_);
+    GetDriver()->GetInput()->CreateBooleanComponent(this->props_, "/input/thumbstick/touch", &this->thumbstick_touch_component_);
+    GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/thumbstick/x", &this->thumbstick_x_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedTwoSided);
+    GetDriver()->GetInput()->CreateScalarComponent(this->props_, "/input/thumbstick/y", &this->thumbstick_y_component_, vr::EVRScalarType::VRScalarType_Absolute, vr::EVRScalarUnits::VRScalarUnits_NormalizedTwoSided);
+
 
     // Opt out of hand selection
-    GetDriver()->GetProperties()->SetInt32Property(props, vr::Prop_ControllerRoleHint_Int32, vr::ETrackedControllerRole::TrackedControllerRole_OptOut);
+    GetDriver()->GetProperties()->SetInt32Property(this->props_, vr::Prop_ControllerRoleHint_Int32, vr::ETrackedControllerRole::TrackedControllerRole_OptOut);
+
+    // Set controller profile
+    GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_InputProfilePath_String, "{amfitrack}/input/amfitrack_tracker_profile.json");
+
+    // std::string controller_ready_file = "{amfitrack}/icons/controller_status_ready.png";
+    // std::string controller_not_ready_file = "{amfitrack}/icons/controller_off.png";
+
+    // GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_NamedIconPathDeviceReady_String, controller_ready_file.c_str());
+
+    // GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_NamedIconPathDeviceOff_String, controller_not_ready_file.c_str());
+    // GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_NamedIconPathDeviceSearching_String, controller_not_ready_file.c_str());
+    // GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_NamedIconPathDeviceSearchingAlert_String, controller_not_ready_file.c_str());
+    // GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_NamedIconPathDeviceReadyAlert_String, controller_not_ready_file.c_str());
+    // GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_NamedIconPathDeviceNotReady_String, controller_not_ready_file.c_str());
+    // GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_NamedIconPathDeviceStandby_String, controller_not_ready_file.c_str());
+    // GetDriver()->GetProperties()->SetStringProperty(this->props_, vr::Prop_NamedIconPathDeviceAlertLow_String, controller_not_ready_file.c_str());
 
     return vr::EVRInitError::VRInitError_None;
 }
@@ -58,30 +104,49 @@ vr::EVRInitError AmfitrackDriver::TrackerDevice::Activate(uint32_t unObjectId)
 void AmfitrackDriver::TrackerDevice::RegisterButtonPress(uint16_t gpio_state)
 {
 
-    bool ButtonPressed = CHECK_BIT(gpio_state, 3);
+    bool ButtonPressed_0 = CHECK_BIT(gpio_state, 0);
+    bool ButtonPressed_1 = CHECK_BIT(gpio_state, 1);
+    bool ButtonPressed_2 = CHECK_BIT(gpio_state, 2);
+    bool ButtonPressed_3 = CHECK_BIT(gpio_state, 3);
+    float analog_0 = CHECK_ANALOG(gpio_state);
 
-    /*if (this->handedness_ == Handedness::RIGHT)
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed_0, 0);
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed_0, 0);
+
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_click_component_, ButtonPressed_1, 0);
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed_1, 0);
+
+    GetDriver()->GetInput()->UpdateScalarComponent(this->trigger_value_component_, analog_0, 0);
+    //GetDriver()->GetInput()->UpdateBooleanComponent(this->trigger_touch_component_, false, 0);
+    //GetDriver()->GetInput()->UpdateBooleanComponent(this->trigger_click_component_, false, 0);
+
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->grip_touch_component_, ButtonPressed_2, 0);
+    //GetDriver()->GetInput()->UpdateScalarComponent(this->grip_value_component_, 0.5f, 0);
+    //GetDriver()->GetInput()->UpdateScalarComponent(this->grip_force_component_, 0.5f, 0);
+
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, ButtonPressed_3, 0);
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->system_touch_component_, ButtonPressed_3, 0);
+
+    /*GetDriver()->GetInput()->UpdateScalarComponent(this->trackpad_x_component_, 0.5f, 0);
+    GetDriver()->GetInput()->UpdateScalarComponent(this->trackpad_y_component_, 0.5f, 0);
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->trackpad_touch_component_, true, 0);
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->trackpad_click_component_, true, 0);*/
+
+    GetDriver()->GetInput()->UpdateScalarComponent(this->thumbstick_x_component_, 0.5f, 0);
+    GetDriver()->GetInput()->UpdateScalarComponent(this->thumbstick_y_component_, 0.5f, 0);
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->thumbstick_touch_component_, true, 0);
+    GetDriver()->GetInput()->UpdateBooleanComponent(this->thumbstick_click_component_, true, 0);
+
+    if (GetAsyncKeyState('O') & 0x8000)
     {
-
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_click_component_, ButtonPressed, 0);
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->a_button_touch_component_, ButtonPressed, 0);
-
-        if (GetAsyncKeyState('O') & 0x8000)
-        {
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, true, 0);
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_touch_component_, true, 0);
-        }
-        else
-        {
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, false, 0);
-            GetDriver()->GetInput()->UpdateBooleanComponent(this->system_touch_component_, false, 0);
-        }
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, true, 0);
+        GetDriver()->GetInput()->UpdateBooleanComponent(this->system_touch_component_, true, 0);
     }
-    else if (this->handedness_ == Handedness::LEFT)
-    {
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_click_component_, ButtonPressed, 0);
-        GetDriver()->GetInput()->UpdateBooleanComponent(this->b_button_touch_component_, ButtonPressed, 0);
-    }*/
+    //else //COMPONENT NEEDS TO BE RESET IF ACTUAL BINARY BUTTON ISN'T INVOLVED!
+    //{
+    //    GetDriver()->GetInput()->UpdateBooleanComponent(this->system_click_component_, false, 0);
+    //    GetDriver()->GetInput()->UpdateBooleanComponent(this->system_touch_component_, false, 0);
+    //}
 }
 
 vr::DriverPose_t AmfitrackDriver::TrackerDevice::ToDriverPose(AmfitrackDriver::VRPose& pose)

@@ -27,5 +27,6 @@
       "click": true,
       "binding_image_point": [0,0]
     }
-  }
+  },
+  "legacy_binding": "amfitrack_legacy_bindings.json"
 }

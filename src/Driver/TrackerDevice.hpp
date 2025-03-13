@@ -45,9 +45,36 @@ namespace AmfitrackDriver {
 
         vr::VRInputComponentHandle_t haptic_component_ = 0;
 
+        vr::VRInputComponentHandle_t a_button_click_component_ = 0;
+        vr::VRInputComponentHandle_t a_button_touch_component_ = 0;
+
+        vr::VRInputComponentHandle_t b_button_click_component_ = 0;
+        vr::VRInputComponentHandle_t b_button_touch_component_ = 0;
+
+        vr::VRInputComponentHandle_t trigger_value_component_ = 0;
+        vr::VRInputComponentHandle_t trigger_click_component_ = 0;
+        vr::VRInputComponentHandle_t trigger_touch_component_ = 0;
+
+        vr::VRInputComponentHandle_t grip_touch_component_ = 0;
+        vr::VRInputComponentHandle_t grip_value_component_ = 0;
+        vr::VRInputComponentHandle_t grip_force_component_ = 0;
+
         vr::VRInputComponentHandle_t system_click_component_ = 0;
         vr::VRInputComponentHandle_t system_touch_component_ = 0;
 
+        vr::VRInputComponentHandle_t trackpad_click_component_ = 0;
+        vr::VRInputComponentHandle_t trackpad_touch_component_ = 0;
+        vr::VRInputComponentHandle_t trackpad_x_component_ = 0;
+        vr::VRInputComponentHandle_t trackpad_y_component_ = 0;
+
+        vr::VRInputComponentHandle_t thumbstick_click_component_ = 0;
+        vr::VRInputComponentHandle_t thumbstick_touch_component_ = 0;
+        vr::VRInputComponentHandle_t thumbstick_x_component_ = 0;
+        vr::VRInputComponentHandle_t thumbstick_y_component_ = 0;
+
+        // vr::VRInputComponentHandle_t skeleton_left_component_ = 0;
+        // vr::VRInputComponentHandle_t skeleton_right_component_ = 0;
+        vr::PropertyContainerHandle_t props_;
         vr::DriverPose_t ToDriverPose(AmfitrackDriver::VRPose &pose);
 
     };
