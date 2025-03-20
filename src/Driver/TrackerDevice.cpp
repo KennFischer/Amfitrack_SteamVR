@@ -14,8 +14,8 @@
 enum ConfigMode_t
 {
     SourceUpright = 0,
-    SourceOnHMD = 5,
-    SourceFreeMoving = 10,
+    SourceOnHMD = 1,
+    SourceFreeMoving = 2,
 };
 
 static ConfigMode_t configValue = SourceUpright;
@@ -171,252 +171,186 @@ vr::DriverPose_t AmfitrackDriver::TrackerDevice::ToDriverPose(AmfitrackDriver::V
 
 void ConvertToSteamVRCoordinate_tracker(lib_AmfiProt_Amfitrack_Pose_t* input, lib_AmfiProt_Amfitrack_Pose_t* output)
 {
-    output->position_x_in_m = input->position_x_in_m;
+    //Goes from right handed z-up, to 
+    output->position_x_in_m = -input->position_y_in_m;
     output->position_y_in_m = input->position_z_in_m;
-    output->position_z_in_m = -input->position_y_in_m;
+    output->position_z_in_m = -input->position_x_in_m;
 
-    output->orientation_x = input->orientation_x;
+    output->orientation_x = -input->orientation_y;
     output->orientation_y = input->orientation_z;
-    output->orientation_z = -input->orientation_y;
+    output->orientation_z = -input->orientation_x;
     output->orientation_w = input->orientation_w;
-
-    float Multiplier = 1;
-    if (isUnity) Multiplier = 1000;
-    else if (isUnrealEngine) Multiplier = 10;
-
-    output->position_x_in_m *= Multiplier;
-    output->position_y_in_m *= Multiplier;
-    output->position_z_in_m *= Multiplier;
 }
 
 void AmfitrackDriver::TrackerDevice::Update()
 {
-    //TODO NOTICE COPIED FROM ControllerDevice.cpp
+    //TODO NOTICE MUST BE COPIED INTO Tracker FROM CONTROLLER.  YES, THEY SHOULD JUST both INHERIET FROM ONE CLASS
     AmfitrackDriver::PoseHelper poseHelper;
-    isUnity = vr::VRSettings()->GetBool("driver_amfitrack", "isUnity", nullptr);
-    isUnrealEngine = vr::VRSettings()->GetBool("driver_amfitrack", "isUnrealEngine", nullptr);
-    configValue = (ConfigMode_t)vr::VRSettings()->GetInt32("driver_amfitrack", "sourceMounting", nullptr);
 
-    if (configValue == SourceUpright)
+    //isUnity = vr::VRSettings()->GetBool("driver_amfitrack", "isUnity", nullptr);
+    //isUnrealEngine = vr::VRSettings()->GetBool("driver_amfitrack", "isUnrealEngine", nullptr);
+    //configValue = (ConfigMode_t)vr::VRSettings()->GetInt32("driver_amfitrack", "sourceMounting", nullptr);
+    ConfigMode_t ConfigMode = (ConfigMode_t)vr::VRSettings()->GetInt32("driver_amfitrack", "source_mode", nullptr);
+
+    float attachment_position_HMD_x = 0.0f;
+    float attachment_position_HMD_y = 0.0f;
+    float attachment_position_HMD_z = 0.0f;
+    float attachment_orientation_HMD_x = 0.0f;
+    float attachment_orientation_HMD_y = 0.0f;
+    float attachment_orientation_HMD_z = 0.0f;
+
+    if (ConfigMode == SourceUpright)
     {
-        if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
-            return;
-
-        auto pose = IVRDevice::MakeDefaultPose();
-
-        AMFITRACK& AMFITRACK = AMFITRACK::getInstance();
-        if (!AMFITRACK.getDeviceActive(this->deviceID_))
-        {
-            pose.poseIsValid = false;
-            return;
-        }
-
-        lib_AmfiProt_Amfitrack_Pose_t position;
-        lib_AmfiProt_Amfitrack_Pose_t updatedPosition;
-        AMFITRACK.getDevicePose(this->deviceID_, &position);
-
-        ConvertToSteamVRCoordinate_tracker(&position, &updatedPosition);
-
-        pose.vecPosition[0] = updatedPosition.position_x_in_m;
-        pose.vecPosition[1] = updatedPosition.position_y_in_m;
-        pose.vecPosition[2] = updatedPosition.position_z_in_m;
-
-        pose.qRotation.x = updatedPosition.orientation_x;
-        pose.qRotation.y = updatedPosition.orientation_y;
-        pose.qRotation.z = updatedPosition.orientation_z;
-        pose.qRotation.w = updatedPosition.orientation_w;
-
-        // Update in SteamVR
-        GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-        this->last_pose_ = pose;
+        attachment_position_HMD_x = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_position_HMD_x_Static_Source", nullptr);
+        attachment_position_HMD_y = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_position_HMD_y_Static_Source", nullptr);
+        attachment_position_HMD_z = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_position_HMD_z_Static_Source", nullptr);
+        attachment_orientation_HMD_x = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_orientation_HMD_x_Static_Source", nullptr);
+        attachment_orientation_HMD_y = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_orientation_HMD_y_Static_Source", nullptr);
+        attachment_orientation_HMD_z = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_orientation_HMD_z_Static_Source", nullptr);
     }
-    else if (configValue == SourceOnHMD)
+    else if (ConfigMode == SourceOnHMD)
     {
-        if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
-            return;
+        attachment_position_HMD_x = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_position_HMD_x_HMD_Source", nullptr);
+        attachment_position_HMD_y = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_position_HMD_y_HMD_Source", nullptr);
+        attachment_position_HMD_z = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_position_HMD_z_HMD_Source", nullptr);
+        attachment_orientation_HMD_x = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_orientation_HMD_x_HMD_Source", nullptr);
+        attachment_orientation_HMD_y = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_orientation_HMD_y_HMD_Source", nullptr);
+        attachment_orientation_HMD_z = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_orientation_HMD_z_HMD_Source", nullptr);
+    }
+    else if (ConfigMode == SourceFreeMoving)
+    {
+        attachment_position_HMD_x = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_position_HMD_x_Source_Free_Moving", nullptr);
+        attachment_position_HMD_y = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_position_HMD_y_Source_Free_Moving", nullptr);
+        attachment_position_HMD_z = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_position_HMD_z_Source_Free_Moving", nullptr);
+        attachment_orientation_HMD_x = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_orientation_HMD_x_Source_Free_Moving", nullptr);
+        attachment_orientation_HMD_y = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_orientation_HMD_y_Source_Free_Moving", nullptr);
+        attachment_orientation_HMD_z = vr::VRSettings()->GetFloat("driver_amfitrack", "attachment_orientation_HMD_z_Source_Free_Moving", nullptr);
+    }
 
-        if (this->device_index_ == 5)
-        {
-            auto pose = IVRDevice::MakeDefaultPose();
-            pose.vecPosition[0] = 1.0f;
-            pose.vecPosition[1] = 1.0f;
-            pose.vecPosition[2] = 1.0f;
+    int attachment_ID = 9;
 
-            pose.qRotation = { 1.0f, 0.0f, 0.0f, 0.0f };
+    if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
+        return;
 
-            GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-            this->last_pose_ = pose;
-            return;
-        }
+    //lib_AmfiProt_Amfitrack_Pose_t sensor_pose_steam;
 
+    vr::HmdVector3_t sensor_position_steam;
+    vr::HmdQuaternion_t sensor_orientation_steam;
+
+    auto pose = IVRDevice::MakeDefaultPose();
+
+    AMFITRACK& AMFITRACK = AMFITRACK::getInstance();
+    if (!AMFITRACK.getDeviceActive(this->deviceID_))
+    {
+        pose.poseIsValid = false;
+        return;
+    }
+
+    //Get buttons Presses
+    lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
+    AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
+    uint16_t gpio_state = sensorMeasurement.gpio_state;
+    this->RegisterButtonPress(gpio_state);
+
+    lib_AmfiProt_Amfitrack_Pose_t raw_sensor_pose_source;
+    lib_AmfiProt_Amfitrack_Pose_t sensor_pose_source;
+    AMFITRACK.getDevicePose(this->deviceID_, &raw_sensor_pose_source);
+    ConvertToSteamVRCoordinate_tracker(&raw_sensor_pose_source, &sensor_pose_source);
+    vr::HmdVector3_t attachment_position_steam = { 0, 0, 0 };
+    vr::HmdQuaternion_t attachment_orientation_steam = { 1.0f, 0, 0, 0 };
+    vr::HmdVector3_t source_position_steam = { 0, 0, 0 };
+    vr::HmdQuaternion_t source_orientation_steam = { 1.0f, 0, 0, 0 };
+    vr::HmdVector3_t sensor_position_source = { sensor_pose_source.position_x_in_m, sensor_pose_source.position_y_in_m, sensor_pose_source.position_z_in_m };
+    vr::HmdQuaternion_t sensor_orientation_source = { sensor_pose_source.orientation_w, sensor_pose_source.orientation_x, sensor_pose_source.orientation_y, sensor_pose_source.orientation_z };
+
+    //Determine Attachment Pose in SteamVR
+    if (ConfigMode == SourceUpright)
+    {
+        //In this case the attachment point isn't relative to the HMD, so the name is a bit of misnomer.
+        attachment_position_steam = { attachment_position_HMD_x, attachment_position_HMD_y, attachment_position_HMD_z };
+        attachment_orientation_steam = EulerToQuaternion(attachment_orientation_HMD_x, attachment_orientation_HMD_y, attachment_orientation_HMD_z);
+    }
+    else if (ConfigMode == SourceOnHMD || ConfigMode == SourceFreeMoving)
+    {
         vr::TrackedDevicePose_t hmd_pose{};
         vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1);
 
-        vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(hmd_pose.mDeviceToAbsoluteTracking);
-        vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
+        vr::HmdVector3_t hmd_position_steam = HmdVector3_From34Matrix(hmd_pose.mDeviceToAbsoluteTracking);
+        vr::HmdQuaternion_t hmd_orientation_steam = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
 
-        auto pose = IVRDevice::MakeDefaultPose();
+        vr::HmdVector3_t attachment_position_HMD = { attachment_position_HMD_x, attachment_position_HMD_y, attachment_position_HMD_z };
 
-        AMFITRACK& AMFITRACK = AMFITRACK::getInstance();
-        if (!AMFITRACK.getDeviceActive(this->deviceID_))
-        {
-            pose.poseIsValid = false;
-            return;
-        }
-
-        lib_AmfiProt_Amfitrack_Pose_t position;
-        AMFITRACK.getDevicePose(this->deviceID_, &position);
-
-        // Offset and position
-        vr::HmdVector3_t offset_position_controller = { position.position_x_in_m, -position.position_y_in_m, -position.position_z_in_m + 0.02f };
-        vr::HmdVector3_t offset_position_source = { 0, 0.1f, -0.1f };
-
-        // Optimized position calculation using the new math functions
-        vr::HmdVector3_t positionhmd_sensor = AddVectors(RotateVectorByQuaternion(offset_position_controller, hmd_orientation), hmd_position);
-        vr::HmdVector3_t positionhmd_source = RotateVectorByQuaternion(offset_position_source, hmd_orientation);
-
-        pose.vecPosition[0] = positionhmd_sensor.v[0] + positionhmd_source.v[0];
-        pose.vecPosition[1] = positionhmd_sensor.v[1] + positionhmd_source.v[1];
-        pose.vecPosition[2] = positionhmd_sensor.v[2] + positionhmd_source.v[2];
-
-        // Optimized quaternion rotations
-        pose.qRotation = { position.orientation_w, position.orientation_x, -position.orientation_y, -position.orientation_z };
-
-        vr::HmdQuaternion_t rotationQuatY = { 0.7071068, 0, 0.7071068, 0 };
-        vr::HmdQuaternion_t rotationQuatX = { 0.7071068, 0, 0, 0.7071068 };
-        vr::HmdQuaternion_t rotationQuatZ = { 0, 1, 0, 0 };
-
-        pose.qRotation = MultiplyQuaternions(MultiplyQuaternions(pose.qRotation, rotationQuatY), rotationQuatX);
-        pose.qRotation = MultiplyQuaternions(pose.qRotation, rotationQuatZ);
-        pose.qRotation = MultiplyQuaternions(hmd_orientation, pose.qRotation);
-
-        lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
-        AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
-        uint16_t gpio_state = sensorMeasurement.gpio_state;
-
-        this->RegisterButtonPress(gpio_state);
-
-        GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-        this->last_pose_ = pose;
+        vr::HmdQuaternion_t attachment_orientation_HMD = EulerToQuaternion(attachment_orientation_HMD_x, attachment_orientation_HMD_y, attachment_orientation_HMD_z);
+        attachment_position_steam = AddVectors(RotateVectorByQuaternion(attachment_position_HMD, hmd_orientation_steam), hmd_position_steam);
+        attachment_orientation_steam = MultiplyQuaternions(hmd_orientation_steam, attachment_orientation_HMD);
     }
-    else if (configValue == SourceFreeMoving)
+
+    //Determine Source Pose in SteamVR
+    if (ConfigMode == SourceUpright || ConfigMode == SourceOnHMD)
     {
-        AmfitrackDriver::VRPose pose;
+        source_position_steam = attachment_position_steam;
+        source_orientation_steam = attachment_orientation_steam;
+    }
+    else if (ConfigMode == SourceFreeMoving)
+    {
+        lib_AmfiProt_Amfitrack_Pose_t raw_attachment_pose_source;
+        lib_AmfiProt_Amfitrack_Pose_t attachment_pose_source;
+        AMFITRACK.getDevicePose(attachment_ID, &raw_attachment_pose_source);
+        ConvertToSteamVRCoordinate_tracker(&raw_attachment_pose_source, &attachment_pose_source);
+        vr::HmdVector3_t attachment_position_source_inv = { -attachment_pose_source.position_x_in_m, -attachment_pose_source.position_y_in_m, -attachment_pose_source.position_z_in_m };
+        vr::HmdQuaternion_t attachment_orientation_source = { attachment_pose_source.orientation_w, attachment_pose_source.orientation_x, attachment_pose_source.orientation_y, attachment_pose_source.orientation_z };
+        //Invert
+        vr::HmdQuaternion_t source_orientation_attachment = { attachment_orientation_source.w, -attachment_orientation_source.x, -attachment_orientation_source.y, -attachment_orientation_source.z };
+        vr::HmdVector3_t source_position_attachment = RotateVectorByQuaternion(attachment_position_source_inv, source_orientation_attachment);
 
-        // --- Gather poses from SteamVR ---
-        vr::TrackedDevicePose_t tracked_poses[vr::k_unMaxTrackedDeviceCount];
-        vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, tracked_poses, vr::k_unMaxTrackedDeviceCount);
 
-        // We assume the generic tracker is at index 16
-        AmfitrackDriver::VRPose steamVR_tracker_pose{};
 
-        vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(tracked_poses[16].mDeviceToAbsoluteTracking);
-        steamVR_tracker_pose.Position.v[0] = hmd_position.v[0];
-        steamVR_tracker_pose.Position.v[1] = hmd_position.v[1];
-        steamVR_tracker_pose.Position.v[2] = hmd_position.v[2];
-
-        // Acquire the Amfitrack singleton and fetch the generic tracker pose
-        AMFITRACK& AMFITRACK = AMFITRACK::getInstance();
-        lib_AmfiProt_Amfitrack_Pose_t generic_tracker_pose{};
-        AMFITRACK.getDevicePose(4, &generic_tracker_pose);
-
-        AmfitrackDriver::VRPose generic_hmd_tracker{};
-        generic_hmd_tracker.Position.v[0] = generic_tracker_pose.position_x_in_m;
-        generic_hmd_tracker.Position.v[1] = generic_tracker_pose.position_y_in_m;
-        generic_hmd_tracker.Position.v[2] = generic_tracker_pose.position_z_in_m;
-
-        // --- Compute the source_position using GetSourcePose ---
-        AmfitrackDriver::VRPose source_position = poseHelper.GetSourcePose(generic_hmd_tracker, steamVR_tracker_pose);
-
-        // --- Fetch this controller’s Amfitrack pose for calculating final pose ---
-        lib_AmfiProt_Amfitrack_Pose_t amfitrack_controller_pose{};
-        AMFITRACK.getDevicePose(this->deviceID_, &amfitrack_controller_pose);
-
-        AmfitrackDriver::VRPose controller_pose{};
-        controller_pose.Orientation = {
-            amfitrack_controller_pose.orientation_w,
-            amfitrack_controller_pose.orientation_x,
-            amfitrack_controller_pose.orientation_y,
-            amfitrack_controller_pose.orientation_z };
-
-        controller_pose.Position = {
-            amfitrack_controller_pose.position_x_in_m,
-            amfitrack_controller_pose.position_y_in_m,
-            amfitrack_controller_pose.position_z_in_m };
-
-        // --- Calculate the controller's pose in SteamVR space ---
-        pose = poseHelper.CalculateControllerPose(source_position, controller_pose);
-
-        vr::DriverPose_t out_pose = ToDriverPose(pose);
-
-        // --- Button handling ---
-        lib_AmfiProt_Amfitrack_Sensor_Measurement_t sensorMeasurement;
-        AMFITRACK.getSensorMeasurements(this->deviceID_, &sensorMeasurement);
-        uint16_t gpio_state = sensorMeasurement.gpio_state;
-
-        this->RegisterButtonPress(gpio_state);
-
-        // Update in SteamVR
-        GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, out_pose, sizeof(vr::DriverPose_t));
-        this->last_pose_ = out_pose;
+        source_position_steam = AddVectors(RotateVectorByQuaternion(source_position_attachment, attachment_orientation_steam), attachment_position_steam);
+        source_orientation_steam = MultiplyQuaternions(attachment_orientation_steam, source_orientation_attachment);
     }
 
-    //// Check if the device is valid
-    //if (this->device_index_ == vr::k_unTrackedDeviceIndexInvalid)
-    //    return;
+    //Determine Sensor position in SteamVR
+    sensor_position_steam = AddVectors(RotateVectorByQuaternion(sensor_position_source, source_orientation_steam), source_position_steam);
+    sensor_orientation_steam = MultiplyQuaternions(source_orientation_steam, sensor_orientation_source);
 
-    //// Get the HMD's pose in SteamVR
-    //vr::TrackedDevicePose_t hmd_pose{};
-    //vr::VRServerDriverHost()->GetRawTrackedDevicePoses(0.f, &hmd_pose, 1); // Fetch the HMD pose
+    if ((this->deviceID_ == attachment_ID) && (ConfigMode == SourceFreeMoving))
+    {
+        //Present source pose instead og
+        sensor_position_steam.v[0] = source_position_steam.v[0];
+        sensor_position_steam.v[1] = source_position_steam.v[1];
+        sensor_position_steam.v[2] = source_position_steam.v[2];
 
-    //// Check if the HMD pose is valid
-    //if (hmd_pose.eTrackingResult == vr::TrackingResult_Running_OK)
-    //{
-    //    // Fetch the HMD position and orientation
-    //    vr::HmdVector3_t hmd_position = HmdVector3_From34Matrix(hmd_pose.mDeviceToAbsoluteTracking);
-    //    vr::HmdQuaternion_t hmd_orientation = HmdQuaternion_FromMatrix(hmd_pose.mDeviceToAbsoluteTracking);
+        sensor_orientation_steam.w = source_orientation_steam.w;
+        sensor_orientation_steam.x = source_orientation_steam.x;
+        sensor_orientation_steam.y = source_orientation_steam.y;
+        sensor_orientation_steam.z = source_orientation_steam.z;
+    }
+    if (vr::VRSettings()->GetBool("driver_amfitrack", "display_Attachment_pose", nullptr))
+    {
+        sensor_position_steam.v[0] = attachment_position_steam.v[0];
+        sensor_position_steam.v[1] = attachment_position_steam.v[1];
+        sensor_position_steam.v[2] = attachment_position_steam.v[2];
 
-    //    // Create a default pose for the tracker
-    //    auto pose = IVRDevice::MakeDefaultPose();
+        sensor_orientation_steam.w = attachment_orientation_steam.w;
+        sensor_orientation_steam.x = attachment_orientation_steam.x;
+        sensor_orientation_steam.y = attachment_orientation_steam.y;
+        sensor_orientation_steam.z = attachment_orientation_steam.z;
+    }
 
-    //    // Define the offset (5 cm forward and 12 cm up)
-    //    vr::HmdVector3_t offset_position = {0.05f, 0.12f, 0.0f}; // X = 5 cm forward, Y = 12 cm above, Z = 0
+    pose.vecPosition[0] = sensor_position_steam.v[0];
+    pose.vecPosition[1] = sensor_position_steam.v[1];
+    pose.vecPosition[2] = sensor_position_steam.v[2];
 
-    //    // Rotate the offset by the HMD's orientation
-    //    vr::HmdVector3_t rotated_offset = RotateVectorByQuaternion(offset_position, hmd_orientation);
+    pose.qRotation.x = sensor_orientation_steam.x;
+    pose.qRotation.y = sensor_orientation_steam.y;
+    pose.qRotation.z = sensor_orientation_steam.z;
+    pose.qRotation.w = sensor_orientation_steam.w;
 
-    //    // Calculate the tracker's position in SteamVR space
-    //    pose.vecPosition[0] = hmd_position.v[0] + rotated_offset.v[0]; // X position
-    //    pose.vecPosition[1] = hmd_position.v[1] + rotated_offset.v[1]; // Y position
-    //    pose.vecPosition[2] = hmd_position.v[2] + rotated_offset.v[2]; // Z position
-
-    //    // Set the tracker's rotation to match the HMD's rotation
-    //    pose.qRotation = hmd_orientation;
-
-    //    // Mark the pose as valid
-    //    pose.poseIsValid = true;
-    //    pose.result = vr::TrackingResult_Running_OK;
-
-    //    // Update in SteamVR
-    //    GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-
-    //    // Store the last pose for reference
-    //    this->last_pose_ = pose;
-    //}
-    //else
-    //{
-    //    // If HMD pose is invalid, mark the tracker pose as invalid
-    //    auto pose = IVRDevice::MakeDefaultPose();
-    //    pose.poseIsValid = false;
-    //    GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
-
-    //    // // Log invalid state
-    //    // std::string log_message = "TrackerDevice::Update - Device ID: " + std::to_string(this->device_index_) +
-    //    //                           ", Serial: " + this->GetSerial() +
-    //    //                           ", Pose is invalid.";
-    //    // GetDriver()->Log(log_message);
-    //}
+    // Update in SteamVR
+    GetDriver()->GetDriverHost()->TrackedDevicePoseUpdated(this->device_index_, pose, sizeof(vr::DriverPose_t));
+    this->last_pose_ = pose;
 }
+
 
 DeviceType AmfitrackDriver::TrackerDevice::GetDeviceType()
 {

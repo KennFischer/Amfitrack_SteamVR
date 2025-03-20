@@ -2,32 +2,271 @@
     {
       "title": "Amfitrack",
       "show_without_hmd": true,
-      "values": [
-        {
-          "name": "/settings/driver_amfitrack/isUnity",
-          "control": "toggle",
-          "label": "Enable Unity based (m->mm)",
-          "on_label": "Enabled",
-          "off_label": "Disabled",
-          "requires": {}
-        },
-        {
-          "name": "/settings/driver_amfitrack/isUnrealEngine",
-          "control": "toggle",
-          "label": "Enable Unreal engine based (m->cm)",
-          "on_label": "Enabled",
-          "off_label": "Disabled",
-          "requires": {}
-        },
-        {
-          "name": "/settings/driver_amfitrack/sourceMounting",
-          "control": "slider",
-          "label": "Source mounting: 0==Z-up | 5== on HMD Y up Z forward | 10 == stationary source",
-          "type": "uint",
-          "min": 0,
-          "max": 10,
-          "requires": {}
-        }
-      ]
+        "values": [
+            {
+                "name": "/settings/driver_amfitrack/source_mode",
+                "control": "select",
+                "label": "Source Mode",
+                "type": "int",
+                "options": [
+                    {
+                        "value": "0",
+                        "label": "Static Source"
+                    },
+                    {
+                        "value": "1",
+                        "label": "HMD Source"
+                    },
+                    {
+                        "value": "2",
+                        "label": "Source Free Moving"
+                    }
+                ]
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_position_HMD_x_Static_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment X position offset to HMD [meters]",
+                "type": "float",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "step": 0.005,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 0
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_position_HMD_y_Static_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment Y position offset to HMD [meters]",
+                "type": "float",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "step": 0.005,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 0
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_position_HMD_z_Static_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment Z position offset to HMD [meters]",
+                "type": "float",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "step": 0.005,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 0
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_orientation_HMD_x_Static_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment X orientation offset to HMD [degrees]",
+                "type": "float",
+                "min": -180,
+                "max": 180,
+                "decimals": 0.5,
+                "step": 1,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 0
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_orientation_HMD_y_Static_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment Y orientation offset to HMD [degrees]",
+                "type": "float",
+                "min": -180,
+                "max": 180,
+                "decimals": 0.5,
+                "step": 1,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 0
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_orientation_HMD_z_Static_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment Z orientation offset to HMD [degrees]",
+                "type": "float",
+                "min": -180,
+                "max": 180,
+                "decimals": 0.5,
+                "step": 1,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 0
+                }
+            },
+
+            {
+                "name": "/settings/driver_amfitrack/attachment_position_HMD_x_HMD_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment X position offset to HMD [meters]",
+                "type": "float",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "step": 0.005,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 1
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_position_HMD_y_HMD_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment Y position offset to HMD [meters]",
+                "type": "float",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "step": 0.005,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 1
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_position_HMD_z_HMD_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment Z position offset to HMD [meters]",
+                "type": "float",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "step": 0.005,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 1
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_orientation_HMD_x_HMD_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment X orientation offset to HMD [degrees]",
+                "type": "float",
+                "min": -180,
+                "max": 180,
+                "decimals": 0.5,
+                "step": 1,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 1
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_orientation_HMD_y_HMD_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment Y orientation offset to HMD [degrees]",
+                "type": "float",
+                "min": -180,
+                "max": 180,
+                "decimals": 0.5,
+                "step": 1,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 1
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_orientation_HMD_z_HMD_Source",
+                "control": "slider",
+                "label": "AMFITRACK attachment Z orientation offset to HMD [degrees]",
+                "type": "float",
+                "min": -180,
+                "max": 180,
+                "decimals": 0.5,
+                "step": 1,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 1
+                }
+            },
+
+            {
+                "name": "/settings/driver_amfitrack/attachment_position_HMD_x_Source_Free_Moving",
+                "control": "slider",
+                "label": "AMFITRACK attachment X position offset to HMD [meters]",
+                "type": "float",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "step": 0.005,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 2
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_position_HMD_y_Source_Free_Moving",
+                "control": "slider",
+                "label": "AMFITRACK attachment Y position offset to HMD [meters]",
+                "type": "float",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "step": 0.005,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 2
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_position_HMD_z_Source_Free_Moving",
+                "control": "slider",
+                "label": "AMFITRACK attachment Z position offset to HMD [meters]",
+                "type": "float",
+                "min": -0.5,
+                "max": 0.5,
+                "decimals": 3,
+                "step": 0.005,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 2
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_orientation_HMD_x_Source_Free_Moving",
+                "control": "slider",
+                "label": "AMFITRACK attachment X orientation offset to HMD [degrees]",
+                "type": "float",
+                "min": -180,
+                "max": 180,
+                "decimals": 0.5,
+                "step": 1,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 2
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_orientation_HMD_y_Source_Free_Moving",
+                "control": "slider",
+                "label": "AMFITRACK attachment Y orientation offset to HMD [degrees]",
+                "type": "float",
+                "min": -180,
+                "max": 180,
+                "decimals": 0.5,
+                "step": 1,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 2
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/attachment_orientation_HMD_z_Source_Free_Moving",
+                "control": "slider",
+                "label": "AMFITRACK attachment Z orientation offset to HMD [degrees]",
+                "type": "float",
+                "min": -180,
+                "max": 180,
+                "decimals": 0.5,
+                "step": 1,
+                "requires": {
+                    "/settings/driver_amfitrack/source_mode": 2
+                }
+            },
+            {
+                "name": "/settings/driver_amfitrack/display_Attachment_pose",
+                "control": "toggle",
+                "group": "chaperone_style",
+                "label": "Display Attachment pose",
+                "text": "Enable"
+            }
+
+        ]
     }
 ]

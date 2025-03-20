@@ -1,7 +1,6 @@
 {
-  "driver_amfitrack": {
-    "isUnity": true,
-    "isUnrealEngine": false,
-    "sourceMounting": 0
-  }
+    "driver_amfitrack": {
+        "sourceMounting": 0,
+        "source_mode": 0
+    }
 }

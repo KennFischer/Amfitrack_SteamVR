@@ -67,6 +67,7 @@ namespace AmfitrackDriver
         vr::VRInputComponentHandle_t trigger_touch_component_ = 0;
 
         vr::VRInputComponentHandle_t grip_touch_component_ = 0;
+        vr::VRInputComponentHandle_t grip_click_component_ = 0;
         vr::VRInputComponentHandle_t grip_value_component_ = 0;
         vr::VRInputComponentHandle_t grip_force_component_ = 0;
 

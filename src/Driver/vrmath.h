@@ -218,3 +218,26 @@ void HmdVector3_CovertVector( const T &in_vector, V &out_vector )
 	out_vector.v[ 1 ] = in_vector.v[ 1 ];
 	out_vector.v[ 2 ] = in_vector.v[ 2 ];
 }
+
+static vr::HmdQuaternion_t EulerToQuaternion(float roll, float pitch, float yaw) // roll (x), pitch (y), yaw (z), angles are in degrees
+{
+	//Euler angles: Body 3-2-1 sequence
+	//The airplane first does yaw(Body - Z) turn during taxiing onto the runway
+	//Then pitches(Body - Y) during take-off
+	//Thenfinally rolls(Body - X) in the air. 
+
+	double cr = cos(DEG_TO_RAD(roll) * 0.5);
+	double sr = sin(DEG_TO_RAD(roll) * 0.5);
+	double cp = cos(DEG_TO_RAD(pitch) * 0.5);
+	double sp = sin(DEG_TO_RAD(pitch) * 0.5);
+	double cy = cos(DEG_TO_RAD(yaw) * 0.5);
+	double sy = sin(DEG_TO_RAD(yaw) * 0.5);
+
+	vr::HmdQuaternion_t q;
+	q.w = (float)(cr * cp * cy + sr * sp * sy);
+	q.x = (float)(sr * cp * cy - cr * sp * sy);
+	q.y = (float)(cr * sp * cy + sr * cp * sy);
+	q.z = (float)(cr * cp * sy - sr * sp * cy);
+
+	return q;
+}
